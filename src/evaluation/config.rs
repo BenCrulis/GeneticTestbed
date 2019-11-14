@@ -1,5 +1,5 @@
 use super::super::Scoring;
 
 struct Config {
-    scoring: dyn Scoring
+    scoring: dyn Scoring<Genotype=()>
 }
