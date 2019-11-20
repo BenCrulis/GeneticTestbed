@@ -60,7 +60,7 @@ trait ProblemInstanceGenerator<P>: Named {
 struct Placeholder;
 
 
-trait AlgorithmConfig {
+trait AlgorithmConfig<V,F> {
     fn test(&self);
 }
 
@@ -70,33 +70,36 @@ struct AlgoConfig<'a,V,F> {
     replacement_selection: &'a dyn ReplacementSelection<V,F>
 }
 
-impl<'a,V,F> AlgorithmConfig for AlgoConfig<'a,V,F> {
+impl<'a,V,F> AlgorithmConfig<V,F> for AlgoConfig<'a,V,F> {
     fn test(&self) {
         unimplemented!()
     }
 }
 
 #[derive(Copy, Clone)]
-struct CommonParameters<'a, H> {
+struct CommonParameters {
+    population_size: usize,
     number_of_repetitions: u64,
-    number_of_iteration: u64,
+    number_of_iterations: u64,
+}
+
+#[derive(Copy, Clone)]
+struct ProblemConfig<'a,V,P,F,H> {
+    random_organism_generator: &'a dyn OrganismGenerator<V,P>,
+    problem_instance_generator: &'a dyn ProblemInstanceGenerator<P>,
+    scorer_generator: &'a dyn Scoring<Genotype=&'a V>,
+    feature_mapper: &'a dyn FeatureMapper<V, F>,
     constant_hyperparameters: H,
     hyperparameter_mapper: &'a dyn HyperparameterMapper<H>
 }
 
-#[derive(Copy, Clone)]
-struct ProblemConfig<'a,V,P,F> {
-    random_organism_generator: &'a dyn OrganismGenerator<V>,
-    problem_instance_generator: &'a dyn ProblemInstanceGenerator<P>,
-    scorer_generator: &'a dyn Scoring<Genotype=&'a V>,
-    feature_mapper: &'a dyn FeatureMapper<V, F>
+#[derive(Clone)]
+struct GeneralConfig<'a,V,P,F,H> {
+    problem_config: ProblemConfig<'a,V,P,F,H>,
+    algorithm_configs: Vec<&'a dyn AlgorithmConfig<V,F>>
 }
 
-#[derive(Clone)]
-struct GeneralConfig<'a,V,P,F> {
-    problem_config: ProblemConfig<'a,V,P,F>,
-    algorithm_configs: Vec<&'a dyn AlgorithmConfig>
-}
+
 
 #[derive(Clone)]
 struct Iteration {
@@ -115,15 +118,15 @@ struct Iteration {
 
 trait Config<'a, H> {
     fn get_problem_config_parameters(&self) -> HashMap<String,String>;
-    fn execute(&'a self, common_parameters: &'a CommonParameters<'a, H>) -> Box<dyn Iterator<Item=Iteration> + 'a>;
+    fn execute(&'a self, common_parameters: &'a CommonParameters) -> Box<dyn Iterator<Item=Iteration> + 'a>;
 }
 
 
 #[derive(Clone)]
 struct AlgoState<'a,'b,V,P,H,F> {
-    algorithm_configs: Vec<&'a dyn AlgorithmConfig>,
-    problem_config: &'a ProblemConfig<'a,V,P,F>,
-    common_config: &'b CommonParameters<'b, H>,
+    algorithm_configs: Vec<&'a dyn AlgorithmConfig<V,F>>,
+    problem_config: &'a ProblemConfig<'a,V,P,F,H>,
+    common_config: &'b CommonParameters,
     repetition: u64,
     i: u64,
     index_algo: usize,
@@ -150,7 +153,7 @@ impl<'a,'b,V,P,H,F> Iterator for AlgoState<'a,'b,V,P,H,F> {
 
         let actual_algo = self.algorithm_configs.get(self.index_algo).unwrap();
 
-        if self.i >= self.common_config.number_of_iteration {
+        if self.i >= self.common_config.number_of_iterations {
             self.i = 0;
             if self.index_algo >= self.algorithm_configs.len() {
                 self.index_algo = 0;
@@ -172,12 +175,12 @@ impl<'a,'b,V,P,H,F> Iterator for AlgoState<'a,'b,V,P,H,F> {
 }
 
 
-impl<'a, H, V, P, F> Config<'a, H> for GeneralConfig<'a,V, P, F> {
+impl<'a, H, V, P, F> Config<'a, H> for GeneralConfig<'a,V, P, F, H> {
     fn get_problem_config_parameters(&self) -> HashMap<String, String, RandomState> {
         unimplemented!()
     }
 
-    fn execute(&'a self, common_parameters: &'a CommonParameters<'a, H>) -> Box<dyn Iterator<Item=Iteration> + 'a> {
+    fn execute(&'a self, common_parameters: &'a CommonParameters) -> Box<dyn Iterator<Item=Iteration> + 'a> {
         Box::new(AlgoState {
             algorithm_configs: self.algorithm_configs.clone(),
             problem_config: &self.problem_config,
@@ -192,15 +195,38 @@ impl<'a, H, V, P, F> Config<'a, H> for GeneralConfig<'a,V, P, F> {
 }
 
 
+fn simple_ga_config<V,F>() -> AlgoConfig<'static,V,F> {
+    AlgoConfig {
+        elitism: &GreedySelection{},
+        replacement_selection: &SimpleReplacement{}
+    }
+}
+
 
 fn main() {
     println!("Hello, world!");
 
+    let target_population_size = 100_usize;
+
+    let simpleGA_config = simple_ga_config::<(),()>();
+
+    let general_config_tsp = GeneralConfig::<(),(),(),()> {
+        problem_config: ProblemConfig {
+            random_organism_generator: unimplemented!(),
+            problem_instance_generator: unimplemented!(),
+            scorer_generator: unimplemented!(),
+            feature_mapper: unimplemented!(),
+            constant_hyperparameters: (),
+            hyperparameter_mapper: unimplemented!()
+        },
+        algorithm_configs: vec![&simple_ga_config()]
+    };
+
+
     let common_config = CommonParameters {
+        population_size: 100,
         number_of_repetitions: 10,
-        number_of_iteration: 10,
-        constant_hyperparameters: (),
-        hyperparameter_mapper: unimplemented!()
+        number_of_iterations: 10,
     };
 
     let configs: Vec<&mut dyn Config<()>> = vec![];

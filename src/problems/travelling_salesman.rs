@@ -8,16 +8,44 @@ use std::hash::Hash;
 
 use self::super::super::common::{Named, Parametrized, Parameter};
 use self::super::super::features::FeatureMapper;
+use crate::organism::{OrganismGenerator, Genome};
+use crate::organism::Organism;
+use rand::{thread_rng, Rng};
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash)]
 pub struct TSPValue<T> {
     pub permutation: Vec<T>
 }
 
+struct TSPHyperparameters {
+    mutation_chance: f64
+}
 
-struct TSPEvaluator<'a, T> {
+impl<T: Clone> Genome<TSPHyperparameters> for TSPValue<T> {
+    fn mutate(&self, hyperparameters: &TSPHyperparameters) -> Self where Self: Sized {
+        let mut new = self.permutation.clone();
+
+        let mut rng = thread_rng();
+
+        while rng.gen::<f64>() < hyperparameters.mutation_chance {
+
+            let index_a = rng.gen_range(0,new.len());
+
+            let index_b= rng.gen_range(0, new.len());
+            while index_b == index_a {
+
+            }
+        }
+        return TSPValue{permutation: new};
+    }
+}
+
+
+struct TSPInstance<'a, T> {
     distances: &'a HashMap<(&'a T, &'a T), f64>,
-    max_dist: f64
+    max_dist: f64,
+    min_dist: f64,
+    number_of_cities: usize
 }
 
 struct TSPFeatureMapper {
@@ -46,18 +74,21 @@ impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>> for TSPFeatureMapp
 
 
 
-impl<'a, T> TSPEvaluator<'a, T> {
-    fn new(distances: &'a HashMap<(&'a T, &'a T), f64>) -> Self {
+impl<'a, T> TSPInstance<'a, T> {
+    fn new(distances: &'a HashMap<(&'a T, &'a T), f64>, number_of_cities: usize) -> Self {
         let max_dist: f64 = distances.values().map(|x| OrderedFloat::from(*x)).max().unwrap().into();
-        TSPEvaluator{
+        let min_dist: f64 = distances.values().map(|x| OrderedFloat::from(*x)).min().unwrap().into();
+        TSPInstance {
             distances,
-            max_dist
+            max_dist,
+            min_dist,
+            number_of_cities
         }
     }
 }
 
 
-impl<T: Eq + Hash> Scoring for TSPEvaluator<'_, T> {
+impl<T: Eq + Hash> Scoring for TSPInstance<'_, T> {
     type Genotype = TSPValue<T>;
 
     fn score(&self, genotype: &Self::Genotype) -> f64 {
@@ -69,5 +100,23 @@ impl<T: Eq + Hash> Scoring for TSPEvaluator<'_, T> {
         }
 
         return self.max_dist*genotype.permutation.len() as f64-sum;
+    }
+}
+
+struct TSPRandomSolution{}
+
+impl Named for TSPRandomSolution {
+    fn name(&self) -> String {
+        String::from("TSP simple generator")
+    }
+}
+
+impl Parametrized for TSPRandomSolution {
+
+}
+
+impl<T> OrganismGenerator<TSPValue<T>,TSPInstance<'_,T>> for TSPRandomSolution {
+    fn generate(&self, problem: &TSPInstance<T>) -> TSPValue<T> {
+        unimplemented!()
     }
 }
