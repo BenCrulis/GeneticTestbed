@@ -115,15 +115,15 @@ struct Iteration {
 
 trait Config<'a, H> {
     fn get_problem_config_parameters(&self) -> HashMap<String,String>;
-    fn execute(&'a self, common_parameters: CommonParameters<'a, H>) -> Box<dyn Iterator<Item=Iteration>>;
+    fn execute(&'a self, common_parameters: &'a CommonParameters<'a, H>) -> Box<dyn Iterator<Item=Iteration> + 'a>;
 }
 
 
 #[derive(Clone)]
 struct AlgoState<'a,'b,V,P,H,F> {
     algorithm_configs: Vec<&'a dyn AlgorithmConfig>,
-    problem_config: ProblemConfig<'a,V,P,F>,
-    common_config: CommonParameters<'b, H>,
+    problem_config: &'a ProblemConfig<'a,V,P,F>,
+    common_config: &'b CommonParameters<'b, H>,
     repetition: u64,
     i: u64,
     index_algo: usize,
@@ -177,10 +177,10 @@ impl<'a, H, V, P, F> Config<'a, H> for GeneralConfig<'a,V, P, F> {
         unimplemented!()
     }
 
-    fn execute(&'a self, common_parameters: CommonParameters<'a, H>) -> Box<dyn Iterator<Item=Iteration>> {
+    fn execute(&'a self, common_parameters: &'a CommonParameters<'a, H>) -> Box<dyn Iterator<Item=Iteration> + 'a> {
         Box::new(AlgoState {
             algorithm_configs: self.algorithm_configs.clone(),
-            problem_config: self.problem_config,
+            problem_config: &self.problem_config,
             common_config: common_parameters,
             repetition: 0,
             i: 0,
@@ -207,7 +207,7 @@ fn main() {
 
     for mut config in configs {
         let p_params = config.get_problem_config_parameters();
-        for it in config.execute(common_config) {
+        for it in config.execute(&common_config) {
 
         }
     }
