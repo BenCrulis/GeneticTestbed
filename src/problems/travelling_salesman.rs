@@ -6,18 +6,22 @@ extern crate ordered_float;
 use ordered_float::OrderedFloat;
 use std::hash::Hash;
 
-use self::super::super::common::{Named, Parametrized, Parameter};
+use self::super::super::common::*;
 use self::super::super::features::FeatureMapper;
 use crate::organism::{OrganismGenerator, Genome};
 use crate::organism::Organism;
 use rand::{thread_rng, Rng};
+use rand::prelude::SliceRandom;
+use std::ops::Range;
+
+use super::ProblemInstanceGenerator;
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash)]
 pub struct TSPValue<T> {
     pub permutation: Vec<T>
 }
 
-struct TSPHyperparameters {
+pub struct TSPHyperparameters {
     mutation_chance: f64
 }
 
@@ -41,14 +45,14 @@ impl<T: Clone> Genome<TSPHyperparameters> for TSPValue<T> {
 }
 
 
-struct TSPInstance<'a, T> {
-    distances: &'a HashMap<(&'a T, &'a T), f64>,
+pub struct TSPInstance<'a, T> {
+    distances: HashMap<(&'a T, &'a T), f64>,
     max_dist: f64,
     min_dist: f64,
     number_of_cities: usize
 }
 
-struct TSPFeatureMapper {
+pub struct TSPFeatureMapper {
     number_cities_mapped: usize
 }
 
@@ -75,7 +79,7 @@ impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>> for TSPFeatureMapp
 
 
 impl<'a, T> TSPInstance<'a, T> {
-    fn new(distances: &'a HashMap<(&'a T, &'a T), f64>, number_of_cities: usize) -> Self {
+    fn new(distances: HashMap<(&'a T, &'a T), f64>, number_of_cities: usize) -> Self {
         let max_dist: f64 = distances.values().map(|x| OrderedFloat::from(*x)).max().unwrap().into();
         let min_dist: f64 = distances.values().map(|x| OrderedFloat::from(*x)).min().unwrap().into();
         TSPInstance {
@@ -103,7 +107,13 @@ impl<T: Eq + Hash> Scoring for TSPInstance<'_, T> {
     }
 }
 
-struct TSPRandomSolution{}
+pub struct TSPRandomSolution{}
+
+impl TSPRandomSolution {
+    pub fn new() -> Self {
+        return TSPRandomSolution{};
+    }
+}
 
 impl Named for TSPRandomSolution {
     fn name(&self) -> String {
@@ -111,12 +121,45 @@ impl Named for TSPRandomSolution {
     }
 }
 
-impl Parametrized for TSPRandomSolution {
+impl Parametrized for TSPRandomSolution {}
 
+impl OrganismGenerator<TSPValue<usize>,TSPInstance<'_,usize>> for TSPRandomSolution {
+    fn generate(&self, problem: &TSPInstance<usize>) -> TSPValue<usize> {
+        let mut v: Vec<usize> = (0..problem.number_of_cities).collect();
+        let mut rng = thread_rng();
+
+        v.shuffle(&mut rng);
+
+        return TSPValue{permutation: v};
+    }
 }
 
-impl<T> OrganismGenerator<TSPValue<T>,TSPInstance<'_,T>> for TSPRandomSolution {
-    fn generate(&self, problem: &TSPInstance<T>) -> TSPValue<T> {
-        unimplemented!()
+
+struct SimpleTSPInstanceGenerator {
+    number_of_cities: usize
+}
+
+impl Named for SimpleTSPInstanceGenerator {
+    fn name(&self) -> String {
+        String::from("Simple TSP instance generator")
+    }
+}
+
+impl Parametrized for SimpleTSPInstanceGenerator {
+    fn parameters(&self) -> HashMap<String,Parameter> {
+        let mut hm = HashMap::new();
+        hm.insert("number_of_cities_generated".to_string(),
+                  Parameter::Integer(self.number_of_cities as i64));
+        return hm;
+    }
+}
+
+impl<'a> ProblemInstanceGenerator<TSPInstance<'a,usize>> for SimpleTSPInstanceGenerator {
+    fn generate_problem(&self) -> TSPInstance<'a,usize> {
+        let mut dists = HashMap::new();
+
+        // TODO
+
+        return TSPInstance::new(dists, self.number_of_cities)
     }
 }

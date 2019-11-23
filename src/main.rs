@@ -34,11 +34,18 @@ use selection::Elitism;
 use selection::MetropolisHastings;
 use selection::GreedySelection;
 use rand::{thread_rng, Rng};
-use std::hash::Hash;
-use crate::problems::travelling_salesman::TSPValue;
+
+use problems::ProblemInstanceGenerator;
 use crate::organism::grid::Grid;
 use crate::features::FeatureMapper;
+use std::hash::Hash;
 
+use problems::travelling_salesman::{
+    TSPValue,
+    TSPRandomSolution,
+    TSPHyperparameters,
+    TSPInstance};
+use crate::problems::travelling_salesman::TSPFeatureMapper;
 
 struct MutationHyperparameters {
     mutation_chance: f64
@@ -50,12 +57,6 @@ trait HyperparameterMapper<H>: Named {
     fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> H;
 }
 
-
-
-
-trait ProblemInstanceGenerator<P>: Named {
-    fn generate_problem(&self) -> P;
-}
 
 struct Placeholder;
 
@@ -210,13 +211,13 @@ fn main() {
 
     let simpleGA_config = simple_ga_config::<(),()>();
 
-    let general_config_tsp = GeneralConfig::<(),(),(),()> {
+    let general_config_tsp = GeneralConfig::<TSPValue<usize>,TSPInstance<usize>, TSPFeatureMapper, TSPHyperparameters> {
         problem_config: ProblemConfig {
-            random_organism_generator: unimplemented!(),
+            random_organism_generator: &TSPRandomSolution::new(),
             problem_instance_generator: unimplemented!(),
             scorer_generator: unimplemented!(),
             feature_mapper: unimplemented!(),
-            constant_hyperparameters: (),
+            constant_hyperparameters: unimplemented!(),
             hyperparameter_mapper: unimplemented!()
         },
         algorithm_configs: vec![&simple_ga_config()]

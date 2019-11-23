@@ -11,6 +11,10 @@ pub struct Organism<T> {
 
 pub trait OrganismGenerator<V,P>: Named + Parametrized {
     fn generate(&self, problem: &P) -> V;
+    fn generate_organism(&self, problem: &P) -> Organism<V> {
+        return Organism{genotype: self.generate(problem),
+                        score: Option::None}
+    }
 }
 
 pub trait Genome<H>: Clone + Sized {
