@@ -61,18 +61,23 @@ trait HyperparameterMapper<H>: Named {
 struct Placeholder;
 
 
-trait AlgorithmConfig<V,F> {
-    fn test(&self);
+trait AlgorithmConfig<V,P> {
+    fn initialize_grid(&mut self);
+    fn step(&mut self);
 }
 
 #[derive(Copy, Clone)]
-struct AlgoConfig<'a,V,F> {
+struct AlgoConfig<'a,V,F,P> {
     elitism: &'a dyn Elitism,
-    replacement_selection: &'a dyn ReplacementSelection<V,F>
+    replacement_selection: &'a dyn ReplacementSelection<V,F,P>
 }
 
-impl<'a,V,F> AlgorithmConfig<V,F> for AlgoConfig<'a,V,F> {
-    fn test(&self) {
+impl<'a,V,F,P> AlgorithmConfig<V,P> for AlgoConfig<'a,V,F,P> {
+    fn initialize_grid(&mut self) {
+        unimplemented!()
+    }
+
+    fn step(&mut self) {
         unimplemented!()
     }
 }
@@ -89,7 +94,7 @@ struct ProblemConfig<'a,V,P,F,H> {
     random_organism_generator: &'a dyn OrganismGenerator<V,P>,
     problem_instance_generator: &'a dyn ProblemInstanceGenerator<P>,
     scorer_generator: &'a dyn Scoring<Genotype=&'a V>,
-    feature_mapper: &'a dyn FeatureMapper<V, F>,
+    feature_mapper: &'a dyn FeatureMapper<V, F, P>,
     constant_hyperparameters: H,
     hyperparameter_mapper: &'a dyn HyperparameterMapper<H>
 }
@@ -97,7 +102,7 @@ struct ProblemConfig<'a,V,P,F,H> {
 #[derive(Clone)]
 struct GeneralConfig<'a,V,P,F,H> {
     problem_config: ProblemConfig<'a,V,P,F,H>,
-    algorithm_configs: Vec<&'a dyn AlgorithmConfig<V,F>>
+    algorithm_configs: Vec<&'a dyn AlgorithmConfig<V,P>>
 }
 
 
@@ -125,7 +130,7 @@ trait Config<'a, H> {
 
 #[derive(Clone)]
 struct AlgoState<'a,'b,V,P,H,F> {
-    algorithm_configs: Vec<&'a dyn AlgorithmConfig<V,F>>,
+    algorithm_configs: Vec<&'a dyn AlgorithmConfig<V,P>>,
     problem_config: &'a ProblemConfig<'a,V,P,F,H>,
     common_config: &'b CommonParameters,
     repetition: u64,
@@ -196,13 +201,18 @@ impl<'a, H, V, P, F> Config<'a, H> for GeneralConfig<'a,V, P, F, H> {
 }
 
 
-fn simple_ga_config<V,F>() -> AlgoConfig<'static,V,F> {
-    AlgoConfig {
+fn simple_ga_config<V,P>() -> AlgoConfig<'static,V,(),P> {
+    AlgoConfig::<V,(),P> {
         elitism: &GreedySelection{},
         replacement_selection: &SimpleReplacement{}
     }
 }
 
+
+fn all_algos<V: 'static,P: 'static>() -> Vec<Box<dyn AlgorithmConfig<V,P>>> {
+    let algos: Vec<Box<dyn AlgorithmConfig<V,P>>> = vec![Box::new(simple_ga_config())];
+    return algos;
+}
 
 fn main() {
     println!("Hello, world!");
@@ -220,7 +230,7 @@ fn main() {
             constant_hyperparameters: unimplemented!(),
             hyperparameter_mapper: unimplemented!()
         },
-        algorithm_configs: vec![&simple_ga_config()]
+        algorithm_configs: unimplemented!()
     };
 
 

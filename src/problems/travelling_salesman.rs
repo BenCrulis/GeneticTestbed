@@ -70,7 +70,18 @@ impl Parametrized for TSPFeatureMapper {
     }
 }
 
-impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>> for TSPFeatureMapper {
+impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>,TSPInstance<'_,T>> for TSPFeatureMapper {
+    fn number_of_possible_features(&self, problem: &TSPInstance<T>) -> usize {
+        let mut n = problem.number_of_cities;
+        let mut r = 1;
+        for i in 0..self.number_cities_mapped {
+            r *= n;
+            n -= 1;
+        }
+
+        return r;
+    }
+
     fn project(&self, genome: TSPValue<T>) -> Vec<T> {
         genome.permutation[..self.number_cities_mapped].to_vec()
     }

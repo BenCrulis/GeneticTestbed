@@ -4,11 +4,21 @@ use super::super::evaluation::scoring::Scoring;
 use super::super::organism::grid::Grid;
 
 use rand::{thread_rng, Rng};
+use crate::organism::{Genome, OrganismGenerator};
+use crate::features::FeatureMapper;
+use std::collections::HashMap;
 
-pub trait ReplacementSelection<V,F>: Named {
+pub trait ReplacementSelection<V,F,P>: Named {
+    fn initialize_grid(
+        &self,
+        pop_size: usize,
+        feature_mapper: &dyn FeatureMapper<V,F, P>,
+        problem: &P,
+        generator: &dyn OrganismGenerator<V,P>) -> Grid<V,F>;
     fn select_replace(&self, grid: &mut Grid<V,F>, scorer: &dyn Scoring<Genotype=V>);
 }
 
+#[derive(Copy, Clone)]
 pub struct SimpleReplacement {}
 
 impl Named for SimpleReplacement {
@@ -17,8 +27,27 @@ impl Named for SimpleReplacement {
     }
 }
 
-impl<V,F> ReplacementSelection<V,F> for SimpleReplacement {
-    fn select_replace(&self, grid: &mut Grid<V, F>, scorer: &dyn Scoring<Genotype=V>) {
+impl<V,P> ReplacementSelection<V,(),P> for SimpleReplacement {
+    fn initialize_grid(
+        &self,
+        pop_size: usize,
+        feature_mapper: &dyn FeatureMapper<V, (), P>,
+        problem: &P,
+        generator: &dyn OrganismGenerator<V, P>) -> Grid<V, ()> {
+        let mut gr = vec![];
+        for i in 0..pop_size {
+            let mut hm = HashMap::new();
+            hm.insert((),generator.generate_organism(problem));
+            gr.push(hm);
+        }
+
+        return Grid{
+            cells: gr
+        }
+    }
+
+
+    fn select_replace(&self, grid: &mut Grid<V, ()>, scorer: &dyn Scoring<Genotype=V>) {
         let size = grid.cells.len();
         let mut rng = thread_rng();
         let index_a = rng.gen_range(0,size);
@@ -30,9 +59,10 @@ impl<V,F> ReplacementSelection<V,F> for SimpleReplacement {
 }
 
 pub trait Elitism: Named {
-    fn chose(&self, score_a: f64, score_b: f64) -> bool;
+    fn choose(&self, score_a: f64, score_b: f64) -> bool;
 }
 
+#[derive(Copy, Clone)]
 pub struct MetropolisHastings {}
 
 impl Named for MetropolisHastings {
@@ -42,12 +72,13 @@ impl Named for MetropolisHastings {
 }
 
 impl Elitism for MetropolisHastings {
-    fn chose(&self, score_a: f64, score_b: f64) -> bool {
+    fn choose(&self, score_a: f64, score_b: f64) -> bool {
         let mut trng = thread_rng();
         return trng.gen::<f64>() < score_a/score_b;
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct GreedySelection {}
 
 impl Named for GreedySelection {
@@ -57,7 +88,7 @@ impl Named for GreedySelection {
 }
 
 impl Elitism for GreedySelection {
-    fn chose(&self, score_a: f64, score_b: f64) -> bool {
+    fn choose(&self, score_a: f64, score_b: f64) -> bool {
         return score_a > score_b;
     }
 }
