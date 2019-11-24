@@ -1,0 +1,10 @@
+[package]
+name = "genetic_testbed"
+version = "0.1.0"
+authors = ["ben <bencrulis@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+ordered-float = "*"
+rand = "*"
+serde = "*"
