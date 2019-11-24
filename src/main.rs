@@ -18,6 +18,7 @@ mod features;
 use common::Named;
 use common::Parametrized;
 use common::Parameter;
+use common::ParameterConfig;
 use common::str_param;
 
 use problems::rastrigin::{rastrigin,custom_rastrigin,regularized_rastrigin};
@@ -47,39 +48,39 @@ use problems::travelling_salesman::{
     TSPInstance};
 use crate::problems::travelling_salesman::TSPFeatureMapper;
 
+#[derive(Clone)]
+struct Iteration {
+    iteration: u64,
+    repetition: u64,
+    algo_config: HashMap<String,String>,
+    timestamp: Instant,
+    best_score: f64,
+    sum_scores: f64,
+    min_score: f64,
+    max_score: f64,
+    number_of_organisms: usize,
+    pop_score_variance: f64,
+}
+
 struct MutationHyperparameters {
     mutation_chance: f64
 }
-
-
 
 trait HyperparameterMapper<H>: Named {
     fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> H;
 }
 
 
-struct Placeholder;
-
-
-trait AlgorithmConfig<V,P> {
+trait AlgorithmExec : Iterator {
     fn initialize_grid(&mut self);
-    fn step(&mut self);
+    fn step(&mut self) -> Iteration;
 }
+
 
 #[derive(Copy, Clone)]
-struct AlgoConfig<'a,V,F,P> {
+struct AlgoConfig<'a,V,P,F> {
     elitism: &'a dyn Elitism,
     replacement_selection: &'a dyn ReplacementSelection<V,F,P>
-}
-
-impl<'a,V,F,P> AlgorithmConfig<V,P> for AlgoConfig<'a,V,F,P> {
-    fn initialize_grid(&mut self) {
-        unimplemented!()
-    }
-
-    fn step(&mut self) {
-        unimplemented!()
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -99,51 +100,39 @@ struct ProblemConfig<'a,V,P,F,H> {
     hyperparameter_mapper: &'a dyn HyperparameterMapper<H>
 }
 
-#[derive(Clone)]
-struct GeneralConfig<'a,V,P,F,H> {
-    problem_config: ProblemConfig<'a,V,P,F,H>,
-    algorithm_configs: Vec<&'a dyn AlgorithmConfig<V,P>>
-}
-
-
-
-#[derive(Clone)]
-struct Iteration {
-    iteration: u64,
-    repetition: u64,
-    algo_config: HashMap<String,String>,
-    timestamp: Instant,
-    best_score: f64,
-    sum_scores: f64,
-    min_score: f64,
-    max_score: f64,
-    number_of_organisms: usize,
-    pop_score_variance: f64,
-}
-
-
-trait Config<'a, H> {
-    fn get_problem_config_parameters(&self) -> HashMap<String,String>;
-    fn execute(&'a self, common_parameters: &'a CommonParameters) -> Box<dyn Iterator<Item=Iteration> + 'a>;
-}
-
-
-#[derive(Clone)]
-struct AlgoState<'a,'b,V,P,H,F> {
-    algorithm_configs: Vec<&'a dyn AlgorithmConfig<V,P>>,
+#[derive(Copy, Clone)]
+struct AllConfig<'a,V,F,P,H> {
+    algorithm_configs: &'a AlgoConfig<'a,V,P,F>,
     problem_config: &'a ProblemConfig<'a,V,P,F,H>,
-    common_config: &'b CommonParameters,
-    repetition: u64,
-    i: u64,
-    index_algo: usize,
-    problem: P,
-    grid: Grid<V,F>
+    common_config: &'a CommonParameters,
 }
 
-impl<'a,'b,V,P,H,F> Iterator for AlgoState<'a,'b,V,P,H,F> {
+struct ProblemState<'a,V,P,F,H> {
+    all_config: AllConfig<'a,V,P,F,H>,
+    instance: P,
+    repetitions: u64
+}
+
+
+struct AlgorithmState<'a,V,P,F,H> {
+    all_config: AllConfig<'a,V,F,P,H>,
+    grid: Grid<V,F>,
+    repetition: u64,
+    i: u64
+}
+
+trait Config<'a> {
+    fn get_problem_config_parameters(&self) -> ParameterConfig;
+    fn execute(&'a self) -> Box<dyn Iterator<Item=Box<dyn AlgorithmExec<Item=Iteration>>> + 'a>;
+}
+
+
+impl<'a,V,P,F,H> Iterator for AlgorithmState<'a,V,P,F,H> {
     type Item = Iteration;
 
     fn next(&mut self) -> Option<Self::Item> {
+
+
         let mut iter_res = Iteration {
             iteration: 0,
             repetition: 0,
@@ -157,21 +146,19 @@ impl<'a,'b,V,P,H,F> Iterator for AlgoState<'a,'b,V,P,H,F> {
             pop_score_variance: 0.0
         };
 
-        let actual_algo = self.algorithm_configs.get(self.index_algo).unwrap();
+        let actual_algo = self.all_config.algorithm_configs;
+        let common_config = self.all_config.common_config;
+        let problem_config = self.all_config.problem_config;
 
-        if self.i >= self.common_config.number_of_iterations {
+        if self.i >= common_config.number_of_iterations {
             self.i = 0;
-            if self.index_algo >= self.algorithm_configs.len() {
-                self.index_algo = 0;
-                if self.repetition >= self.common_config.number_of_repetitions {
-                    return None;
-                } else {
-                    self.repetition += 1;
-                    self.problem = self.problem_config.problem_instance_generator.generate_problem()
-                }
+            if self.repetition >= common_config.number_of_repetitions {
+                return None;
             } else {
-                self.index_algo += 1;
+                self.repetition += 1;
+                //self.problem = problem_config.problem_instance_generator.generate_problem()
             }
+
         } else {
             self.i += 1;
         }
@@ -181,70 +168,19 @@ impl<'a,'b,V,P,H,F> Iterator for AlgoState<'a,'b,V,P,H,F> {
 }
 
 
-impl<'a, H, V, P, F> Config<'a, H> for GeneralConfig<'a,V, P, F, H> {
-    fn get_problem_config_parameters(&self) -> HashMap<String, String, RandomState> {
-        unimplemented!()
-    }
 
-    fn execute(&'a self, common_parameters: &'a CommonParameters) -> Box<dyn Iterator<Item=Iteration> + 'a> {
-        Box::new(AlgoState {
-            algorithm_configs: self.algorithm_configs.clone(),
-            problem_config: &self.problem_config,
-            common_config: common_parameters,
-            repetition: 0,
-            i: 0,
-            index_algo: 0,
-            problem: self.problem_config.problem_instance_generator.generate_problem(),
-            grid: Grid { cells: vec![] }
-        })
-    }
-}
-
-
-fn simple_ga_config<V,P>() -> AlgoConfig<'static,V,(),P> {
-    AlgoConfig::<V,(),P> {
-        elitism: &GreedySelection{},
-        replacement_selection: &SimpleReplacement{}
-    }
-}
-
-
-fn all_algos<V: 'static,P: 'static>() -> Vec<Box<dyn AlgorithmConfig<V,P>>> {
-    let algos: Vec<Box<dyn AlgorithmConfig<V,P>>> = vec![Box::new(simple_ga_config())];
-    return algos;
-}
 
 fn main() {
     println!("Hello, world!");
 
     let target_population_size = 100_usize;
 
-    let simpleGA_config = simple_ga_config::<(),()>();
 
-    let general_config_tsp = GeneralConfig::<TSPValue<usize>,TSPInstance<usize>, TSPFeatureMapper, TSPHyperparameters> {
-        problem_config: ProblemConfig {
-            random_organism_generator: &TSPRandomSolution::new(),
-            problem_instance_generator: unimplemented!(),
-            scorer_generator: unimplemented!(),
-            feature_mapper: unimplemented!(),
-            constant_hyperparameters: unimplemented!(),
-            hyperparameter_mapper: unimplemented!()
-        },
-        algorithm_configs: unimplemented!()
-    };
-
-
-    let common_config = CommonParameters {
-        population_size: 100,
-        number_of_repetitions: 10,
-        number_of_iterations: 10,
-    };
-
-    let configs: Vec<&mut dyn Config<()>> = vec![];
+    let configs: Vec<&mut dyn Config> = vec![];
 
     for mut config in configs {
         let p_params = config.get_problem_config_parameters();
-        for it in config.execute(&common_config) {
+        for it in config.execute() {
 
         }
     }

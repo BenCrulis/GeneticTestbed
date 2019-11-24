@@ -9,6 +9,8 @@ pub enum Parameter {
     String(String)
 }
 
+pub type ParameterConfig = HashMap<String,Parameter>;
+
 pub fn decimal_param(val: f64) -> Parameter {
     return Parameter::Decimal(OrderedFloat::from(val));
 }
