@@ -47,12 +47,12 @@ use problems::travelling_salesman::{
     TSPHyperparameters,
     TSPInstance};
 use crate::problems::travelling_salesman::TSPFeatureMapper;
+use std::rc::Rc;
 
 #[derive(Clone)]
 struct Iteration {
     iteration: u64,
     repetition: u64,
-    algo_config: HashMap<String,String>,
     timestamp: Instant,
     best_score: f64,
     sum_scores: f64,
@@ -71,16 +71,20 @@ trait HyperparameterMapper<H>: Named {
 }
 
 
-trait AlgorithmExec : Iterator {
-    fn initialize_grid(&mut self);
-    fn step(&mut self) -> Iteration;
+
+
+
+trait AlgorithmExec<P> {
+//    fn initialize_grid(&mut self);
+    fn step(&mut self, problem: &P) -> Option<Iteration>;
 }
 
 
-#[derive(Copy, Clone)]
-struct AlgoConfig<'a,V,P,F> {
-    elitism: &'a dyn Elitism,
-    replacement_selection: &'a dyn ReplacementSelection<V,F,P>
+
+#[derive(Clone)]
+struct AlgoConfig<V,P,F> {
+    elitism: Rc<dyn Elitism>,
+    replacement_selection: Rc<dyn ReplacementSelection<V,F,P>>
 }
 
 #[derive(Copy, Clone)]
@@ -90,53 +94,111 @@ struct CommonParameters {
     number_of_iterations: u64,
 }
 
-#[derive(Copy, Clone)]
-struct ProblemConfig<'a,V,P,F,H> {
-    random_organism_generator: &'a dyn OrganismGenerator<V,P>,
-    problem_instance_generator: &'a dyn ProblemInstanceGenerator<P>,
-    scorer_generator: &'a dyn Scoring<Genotype=&'a V>,
-    feature_mapper: &'a dyn FeatureMapper<V, F, P>,
+#[derive(Clone)]
+struct ProblemConfig<V,P,F,H> {
+    random_organism_generator: Rc<dyn OrganismGenerator<V,P>>,
+    problem_instance_generator: Rc<dyn ProblemInstanceGenerator<P>>,
+    scorer_generator: Rc<dyn Scoring<Genotype=V>>,
+    feature_mapper: Rc<dyn FeatureMapper<V, F, P>>,
     constant_hyperparameters: H,
-    hyperparameter_mapper: &'a dyn HyperparameterMapper<H>
+    hyperparameter_mapper: Rc<dyn HyperparameterMapper<H>>
 }
 
-#[derive(Copy, Clone)]
-struct AllConfig<'a,V,F,P,H> {
-    algorithm_configs: &'a AlgoConfig<'a,V,P,F>,
-    problem_config: &'a ProblemConfig<'a,V,P,F,H>,
-    common_config: &'a CommonParameters,
+#[derive(Clone)]
+struct AllConfig<V,P,F,H> {
+    algorithm_configs: Rc<AlgoConfig<V,P,F>>,
+    problem_config: Rc<ProblemConfig<V,P,F,H>>,
+    common_config: Rc<CommonParameters>,
 }
 
-struct ProblemState<'a,V,P,F,H> {
-    all_config: AllConfig<'a,V,P,F,H>,
+trait Config {
+    fn get_problem_config_parameters(&self) -> ParameterConfig;
+    fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>>;
+}
+
+impl<V: 'static,P: 'static ,F: 'static ,H: 'static> Config for Rc<AllConfig<V,P,F,H>> {
+    fn get_problem_config_parameters(&self) -> HashMap<String, Parameter, RandomState> {
+        unimplemented!()
+    }
+
+    fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>> {
+        let problem = self.problem_config.problem_instance_generator.generate_problem();
+
+
+        let it = ProblemState {
+            all_config: self.clone(),
+            instance: problem,
+            repetitions: 0
+        };
+
+        return Box::new(it);
+    }
+}
+
+impl<V,P,F,H> Iterator for ProblemState<V,P,F,H> {
+    type Item = Box<dyn Iterator<Item=Iteration>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let gr = self.all_config.algorithm_configs.replacement_selection.initialize_grid(
+            self.all_config.common_config.population_size,
+            self.all_config.problem_config.feature_mapper.as_ref(),
+            &self.instance,
+            self.all_config.problem_config.random_organism_generator.as_ref()
+        );
+
+
+        unimplemented!()
+    }
+}
+
+
+struct ProblemState<V,P,F,H> {
+    all_config: Rc<AllConfig<V,P,F,H>>,
     instance: P,
     repetitions: u64
 }
 
 
-struct AlgorithmState<'a,V,P,F,H> {
-    all_config: AllConfig<'a,V,F,P,H>,
+struct AlgorithmState<V,P,F,H> {
+    problem_state: Rc<ProblemState<V,P,F,H>>,
     grid: Grid<V,F>,
-    repetition: u64,
     i: u64
 }
 
-trait Config<'a> {
-    fn get_problem_config_parameters(&self) -> ParameterConfig;
-    fn execute(&'a self) -> Box<dyn Iterator<Item=Box<dyn AlgorithmExec<Item=Iteration>>> + 'a>;
+
+impl<V,P,F,H> AlgorithmExec<P> for AlgorithmState<V,P,F,H> {
+    fn step(&mut self, problem: &P) -> Option<Iteration> {
+        if self.i >= self.problem_state.all_config.common_config.number_of_iterations {
+            None
+        }
+        else {
+            let mut iter_res = Iteration {
+                iteration: 0,
+                repetition: 0,
+                timestamp: Instant::now(),
+                best_score: 0.0,
+                sum_scores: 0.0,
+                min_score: 0.0,
+                max_score: 0.0,
+                number_of_organisms: 0,
+                pop_score_variance: 0.0
+            };
+
+
+            Some(iter_res)
+        }
+    }
 }
 
 
-impl<'a,V,P,F,H> Iterator for AlgorithmState<'a,V,P,F,H> {
+impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
     type Item = Iteration;
 
     fn next(&mut self) -> Option<Self::Item> {
 
-
         let mut iter_res = Iteration {
             iteration: 0,
             repetition: 0,
-            algo_config: Default::default(),
             timestamp: Instant::now(),
             best_score: 0.0,
             sum_scores: 0.0,
@@ -146,18 +208,12 @@ impl<'a,V,P,F,H> Iterator for AlgorithmState<'a,V,P,F,H> {
             pop_score_variance: 0.0
         };
 
-        let actual_algo = self.all_config.algorithm_configs;
-        let common_config = self.all_config.common_config;
-        let problem_config = self.all_config.problem_config;
+        let actual_algo = self.problem_state.all_config.algorithm_configs.clone();
+        let common_config = self.problem_state.all_config.common_config.clone();
+        let problem_config = self.problem_state.all_config.problem_config.clone();
 
         if self.i >= common_config.number_of_iterations {
-            self.i = 0;
-            if self.repetition >= common_config.number_of_repetitions {
-                return None;
-            } else {
-                self.repetition += 1;
-                //self.problem = problem_config.problem_instance_generator.generate_problem()
-            }
+            return None;
 
         } else {
             self.i += 1;
@@ -173,15 +229,19 @@ impl<'a,V,P,F,H> Iterator for AlgorithmState<'a,V,P,F,H> {
 fn main() {
     println!("Hello, world!");
 
+    let test: Vec<Box<dyn AlgorithmExec<()>>> = vec![];
+
     let target_population_size = 100_usize;
 
 
-    let configs: Vec<&mut dyn Config> = vec![];
+    let configs: Vec<Rc<dyn Config>> = vec![];
 
     for mut config in configs {
         let p_params = config.get_problem_config_parameters();
         for it in config.execute() {
+            for it2 in it {
 
+            }
         }
     }
 }
