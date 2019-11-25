@@ -22,7 +22,7 @@ pub struct TSPValue<T> {
 }
 
 pub struct TSPHyperparameters {
-    mutation_chance: f64
+    pub mutation_chance: f64
 }
 
 impl<T: Clone> Genome<TSPHyperparameters> for TSPValue<T> {
@@ -44,16 +44,16 @@ impl<T: Clone> Genome<TSPHyperparameters> for TSPValue<T> {
     }
 }
 
-
-pub struct TSPInstance<'a, T> {
-    distances: HashMap<(&'a T, &'a T), f64>,
+#[derive(Clone)]
+pub struct TSPInstance<T> {
+    distances: HashMap<(T, T), f64>,
     max_dist: f64,
     min_dist: f64,
     number_of_cities: usize
 }
 
 pub struct TSPFeatureMapper {
-    number_cities_mapped: usize
+    pub number_cities_mapped: usize
 }
 
 impl Named for TSPFeatureMapper {
@@ -70,7 +70,7 @@ impl Parametrized for TSPFeatureMapper {
     }
 }
 
-impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>,TSPInstance<'_,T>> for TSPFeatureMapper {
+impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>,TSPInstance<T>> for TSPFeatureMapper {
     fn number_of_possible_features(&self, problem: &TSPInstance<T>) -> usize {
         let mut n = problem.number_of_cities;
         let mut r = 1;
@@ -89,8 +89,8 @@ impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>,TSPInstance<'_,T>> 
 
 
 
-impl<'a, T> TSPInstance<'a, T> {
-    fn new(distances: HashMap<(&'a T, &'a T), f64>, number_of_cities: usize) -> Self {
+impl<T> TSPInstance<T> {
+    fn new(distances: HashMap<(T, T), f64>, number_of_cities: usize) -> Self {
         let max_dist: f64 = distances.values().map(|x| OrderedFloat::from(*x)).max().unwrap().into();
         let min_dist: f64 = distances.values().map(|x| OrderedFloat::from(*x)).min().unwrap().into();
         TSPInstance {
@@ -103,15 +103,15 @@ impl<'a, T> TSPInstance<'a, T> {
 }
 
 
-impl<T: Eq + Hash> Scoring for TSPInstance<'_, T> {
+impl<T: Eq + Hash + Copy> Scoring for TSPInstance<T> {
     type Genotype = TSPValue<T>;
 
     fn score(&self, genotype: &Self::Genotype) -> f64 {
 
         let mut sum = 0.0;
-        for x in genotype.permutation.iter().zip(
+        for (&x,&y) in genotype.permutation.iter().zip(
             genotype.permutation.iter().skip(1).cycle()) {
-            sum += *self.distances.get(&x).unwrap();
+            sum += *self.distances.get(&(x,y)).unwrap();
         }
 
         return self.max_dist*genotype.permutation.len() as f64-sum;
@@ -134,7 +134,7 @@ impl Named for TSPRandomSolution {
 
 impl Parametrized for TSPRandomSolution {}
 
-impl OrganismGenerator<TSPValue<usize>,TSPInstance<'_,usize>> for TSPRandomSolution {
+impl OrganismGenerator<TSPValue<usize>,TSPInstance<usize>> for TSPRandomSolution {
     fn generate(&self, problem: &TSPInstance<usize>) -> TSPValue<usize> {
         let mut v: Vec<usize> = (0..problem.number_of_cities).collect();
         let mut rng = thread_rng();
@@ -146,8 +146,8 @@ impl OrganismGenerator<TSPValue<usize>,TSPInstance<'_,usize>> for TSPRandomSolut
 }
 
 
-struct SimpleTSPInstanceGenerator {
-    number_of_cities: usize
+pub struct SimpleTSPInstanceGenerator {
+    pub number_of_cities: usize
 }
 
 impl Named for SimpleTSPInstanceGenerator {
@@ -165,8 +165,8 @@ impl Parametrized for SimpleTSPInstanceGenerator {
     }
 }
 
-impl<'a> ProblemInstanceGenerator<TSPInstance<'a,usize>> for SimpleTSPInstanceGenerator {
-    fn generate_problem(&self) -> TSPInstance<'a,usize> {
+impl<'a> ProblemInstanceGenerator<TSPInstance<usize>> for SimpleTSPInstanceGenerator {
+    fn generate_problem(&self) -> TSPInstance<usize> {
         let mut dists = HashMap::new();
 
         // TODO

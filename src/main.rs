@@ -46,7 +46,7 @@ use problems::travelling_salesman::{
     TSPRandomSolution,
     TSPHyperparameters,
     TSPInstance};
-use crate::problems::travelling_salesman::TSPFeatureMapper;
+use crate::problems::travelling_salesman::{TSPFeatureMapper, SimpleTSPInstanceGenerator};
 use std::rc::Rc;
 
 #[derive(Clone)]
@@ -70,13 +70,16 @@ trait HyperparameterMapper<H>: Named {
     fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> H;
 }
 
-
+trait Config {
+    fn get_problem_config_parameters(&self) -> ParameterConfig;
+    fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>>;
+}
 
 
 
 trait AlgorithmExec<P> {
 //    fn initialize_grid(&mut self);
-    fn step(&mut self, problem: &P) -> Option<Iteration>;
+    fn exec(&self, problem: &P) -> Box<dyn Iterator<Item=Iteration>>;
 }
 
 
@@ -111,49 +114,80 @@ struct AllConfig<V,P,F,H> {
     common_config: Rc<CommonParameters>,
 }
 
-trait Config {
-    fn get_problem_config_parameters(&self) -> ParameterConfig;
-    fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>>;
+impl<V,P,F> AlgorithmExec<P> for AlgoConfig<V,P,F> {
+    fn exec(&self, problem: &P) -> Box<dyn Iterator<Item=Iteration>> {
+
+        /*
+        let gr = self.replacement_selection.initialize_grid();
+
+        Box::new(AlgorithmState {
+            problem_state: Rc::new(unimplemented!()),
+            grid: unimplemented!(),
+            i: 0
+        });
+        */
+        unimplemented!()
+    }
 }
 
-impl<V: 'static,P: 'static ,F: 'static ,H: 'static> Config for Rc<AllConfig<V,P,F,H>> {
+
+
+struct MyConfig<V,P,F,H> {
+    problem_config: Rc<ProblemConfig<V,P,F,H>>,
+    common_config: Rc<CommonParameters>,
+    algorithms: Vec<Rc<dyn AlgorithmExec<P>>>,
+}
+
+struct MyConfigIt<V,P,F,H> {
+    my_config: Rc<MyConfig<V,P,F,H>>,
+    instance: P,
+    repetitions: u64,
+    index_algo: usize
+}
+
+impl<V,P,F,H> Iterator for MyConfigIt<V,P,F,H> {
+    type Item = Box<dyn Iterator<Item=Iteration>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+
+        if self.repetitions > self.my_config.common_config.number_of_repetitions {
+            return None;
+        }
+        else {
+            if self.index_algo >= self.my_config.algorithms.len() {
+                self.index_algo = 0;
+                self.repetitions += 1;
+                self.instance = self.my_config.problem_config.problem_instance_generator.generate_problem();
+            }
+            else {
+                let algo = self.my_config.algorithms.get(self.index_algo).unwrap();
+                return Some(algo.exec(&self.instance));
+            }
+        }
+
+        return None;
+    }
+}
+
+impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for Rc<MyConfig<V,P,F,H>> {
     fn get_problem_config_parameters(&self) -> HashMap<String, Parameter, RandomState> {
         unimplemented!()
     }
 
     fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>> {
-        let problem = self.problem_config.problem_instance_generator.generate_problem();
-
-
-        let it = ProblemState {
-            all_config: self.clone(),
-            instance: problem,
-            repetitions: 0
-        };
-
-        return Box::new(it);
+        Box::new(MyConfigIt{
+            my_config: self.clone(),
+            instance: self.problem_config.problem_instance_generator.generate_problem(),
+            repetitions: 0,
+            index_algo: 0
+        })
     }
 }
-
-impl<V,P,F,H> Iterator for ProblemState<V,P,F,H> {
-    type Item = Box<dyn Iterator<Item=Iteration>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let gr = self.all_config.algorithm_configs.replacement_selection.initialize_grid(
-            self.all_config.common_config.population_size,
-            self.all_config.problem_config.feature_mapper.as_ref(),
-            &self.instance,
-            self.all_config.problem_config.random_organism_generator.as_ref()
-        );
-
-
-        unimplemented!()
-    }
-}
-
 
 struct ProblemState<V,P,F,H> {
-    all_config: Rc<AllConfig<V,P,F,H>>,
+    problem_config: Rc<ProblemConfig<V,P,F,H>>,
+    common_config: Rc<CommonParameters>,
+    algorithms: Vec<Rc<dyn AlgorithmExec<P>>>,
     instance: P,
     repetitions: u64
 }
@@ -165,57 +199,13 @@ struct AlgorithmState<V,P,F,H> {
     i: u64
 }
 
-
-impl<V,P,F,H> AlgorithmExec<P> for AlgorithmState<V,P,F,H> {
-    fn step(&mut self, problem: &P) -> Option<Iteration> {
-        if self.i >= self.problem_state.all_config.common_config.number_of_iterations {
-            None
-        }
-        else {
-            let mut iter_res = Iteration {
-                iteration: 0,
-                repetition: 0,
-                timestamp: Instant::now(),
-                best_score: 0.0,
-                sum_scores: 0.0,
-                min_score: 0.0,
-                max_score: 0.0,
-                number_of_organisms: 0,
-                pop_score_variance: 0.0
-            };
-
-
-            Some(iter_res)
-        }
-    }
-}
-
-
 impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
     type Item = Iteration;
 
     fn next(&mut self) -> Option<Self::Item> {
 
-        let mut iter_res = Iteration {
-            iteration: 0,
-            repetition: 0,
-            timestamp: Instant::now(),
-            best_score: 0.0,
-            sum_scores: 0.0,
-            min_score: 0.0,
-            max_score: 0.0,
-            number_of_organisms: 0,
-            pop_score_variance: 0.0
-        };
+        if self.i >= self.problem_state.common_config.number_of_iterations {
 
-        let actual_algo = self.problem_state.all_config.algorithm_configs.clone();
-        let common_config = self.problem_state.all_config.common_config.clone();
-        let problem_config = self.problem_state.all_config.problem_config.clone();
-
-        if self.i >= common_config.number_of_iterations {
-            return None;
-
-        } else {
             self.i += 1;
         }
 
@@ -224,12 +214,22 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 }
 
 
+fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,Vec<usize>,TSPHyperparameters>> {
+    Rc::new(ProblemConfig {
+        random_organism_generator: Rc::new(TSPRandomSolution{}),
+        problem_instance_generator: Rc::new(SimpleTSPInstanceGenerator{ number_of_cities: 100 }),
+        scorer_generator: unimplemented!(),
+        feature_mapper: Rc::new(TSPFeatureMapper{ number_cities_mapped: 2 }),
+        constant_hyperparameters: TSPHyperparameters{ mutation_chance: 0.2 },
+        hyperparameter_mapper: unimplemented!()
+    })
+}
 
 
 fn main() {
     println!("Hello, world!");
 
-    let test: Vec<Box<dyn AlgorithmExec<()>>> = vec![];
+
 
     let target_population_size = 100_usize;
 
