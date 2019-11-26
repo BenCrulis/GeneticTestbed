@@ -67,8 +67,33 @@ struct MutationHyperparameters {
     mutation_chance: f64
 }
 
-trait HyperparameterMapper<H>: Named {
-    fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> H;
+trait Environment<H>: Named {
+    fn number_of_dimensions(&self) -> usize;
+    fn constant_hyperparameters(&self) -> H;
+    fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> H {
+        self.constant_hyperparameters()
+    }
+}
+
+struct ConstantEnv<H> {
+    constant: H,
+    dimensions: usize
+}
+
+impl<H> Named for ConstantEnv<H> {
+    fn name(&self) -> String {
+        String::from("Constant hyperparameters")
+    }
+}
+
+impl<H: Copy> Environment<H> for ConstantEnv<H> {
+    fn number_of_dimensions(&self) -> usize {
+        self.dimensions
+    }
+
+    fn constant_hyperparameters(&self) -> H {
+        self.constant
+    }
 }
 
 trait Config {
@@ -104,7 +129,7 @@ struct ProblemConfig<V,P,F,H> {
     scorer_generator: Rc<dyn Scoring<V,P>>,
     feature_mapper: Rc<dyn FeatureMapper<V, F, P>>,
     constant_hyperparameters: H,
-    hyperparameter_mapper: Rc<dyn HyperparameterMapper<H>>
+    hyperparameter_mapper: Rc<dyn Environment<H>>
 }
 
 /*
