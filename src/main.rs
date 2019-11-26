@@ -48,6 +48,7 @@ use problems::travelling_salesman::{
     TSPInstance};
 use crate::problems::travelling_salesman::{TSPFeatureMapper, SimpleTSPInstanceGenerator};
 use std::rc::Rc;
+use crate::organism::Genome;
 
 #[derive(Clone)]
 struct Iteration {
@@ -77,7 +78,7 @@ trait Config {
 
 
 
-trait AlgorithmExec<P> {
+trait AlgorithmExec<V,P,F,H> {
 //    fn initialize_grid(&mut self);
     fn exec(&self, problem: &P) -> Box<dyn Iterator<Item=Iteration>>;
 }
@@ -85,9 +86,9 @@ trait AlgorithmExec<P> {
 
 
 #[derive(Clone)]
-struct AlgoConfig<V,P,F> {
+struct AlgoConfig<V,P,F,TF,H> {
     elitism: Rc<dyn Elitism>,
-    replacement_selection: Rc<dyn ReplacementSelection<V,F,P>>
+    replacement_selection: Rc<dyn ReplacementSelection<V,F,P,H,TF>>
 }
 
 #[derive(Copy, Clone)]
@@ -101,20 +102,22 @@ struct CommonParameters {
 struct ProblemConfig<V,P,F,H> {
     random_organism_generator: Rc<dyn OrganismGenerator<V,P>>,
     problem_instance_generator: Rc<dyn ProblemInstanceGenerator<P>>,
-    scorer_generator: Rc<dyn Scoring<Genotype=V>>,
+    scorer_generator: Rc<dyn Scoring<V,P>>,
     feature_mapper: Rc<dyn FeatureMapper<V, F, P>>,
     constant_hyperparameters: H,
     hyperparameter_mapper: Rc<dyn HyperparameterMapper<H>>
 }
 
+/*
 #[derive(Clone)]
 struct AllConfig<V,P,F,H> {
     algorithm_configs: Rc<AlgoConfig<V,P,F>>,
     problem_config: Rc<ProblemConfig<V,P,F,H>>,
     common_config: Rc<CommonParameters>,
 }
+*/
 
-impl<V,P,F> AlgorithmExec<P> for AlgoConfig<V,P,F> {
+impl<V: Genome<H=H,P=P>,P,F,TF,H> AlgorithmExec<V,P,F,H> for AlgoConfig<V,P,F,TF,H> {
     fn exec(&self, problem: &P) -> Box<dyn Iterator<Item=Iteration>> {
 
         /*
@@ -135,7 +138,7 @@ impl<V,P,F> AlgorithmExec<P> for AlgoConfig<V,P,F> {
 struct MyConfig<V,P,F,H> {
     problem_config: Rc<ProblemConfig<V,P,F,H>>,
     common_config: Rc<CommonParameters>,
-    algorithms: Vec<Rc<dyn AlgorithmExec<P>>>,
+    algorithms: Vec<Rc<dyn AlgorithmExec<V,P,F,H>>>,
 }
 
 struct MyConfigIt<V,P,F,H> {
@@ -187,7 +190,7 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for Rc<MyConfig<V,P,F,H
 struct ProblemState<V,P,F,H> {
     problem_config: Rc<ProblemConfig<V,P,F,H>>,
     common_config: Rc<CommonParameters>,
-    algorithms: Vec<Rc<dyn AlgorithmExec<P>>>,
+    algorithms: Vec<Rc<dyn AlgorithmExec<V,P,F,H>>>,
     instance: P,
     repetitions: u64
 }

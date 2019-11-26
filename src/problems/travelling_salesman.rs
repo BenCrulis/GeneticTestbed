@@ -16,6 +16,8 @@ use std::ops::Range;
 
 use super::ProblemInstanceGenerator;
 
+
+
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash)]
 pub struct TSPValue<T> {
     pub permutation: Vec<T>
@@ -25,7 +27,9 @@ pub struct TSPHyperparameters {
     pub mutation_chance: f64
 }
 
-impl<T: Clone> Genome<TSPHyperparameters> for TSPValue<T> {
+impl<T: Clone> Genome for TSPValue<T> {
+    type H = TSPHyperparameters;
+    type P = TSPInstance<T>;
     fn mutate(&self, hyperparameters: &TSPHyperparameters) -> Self where Self: Sized {
         let mut new = self.permutation.clone();
 
@@ -41,6 +45,10 @@ impl<T: Clone> Genome<TSPHyperparameters> for TSPValue<T> {
             }
         }
         return TSPValue{permutation: new};
+    }
+
+    fn score(&self, problem: &TSPInstance<T>) -> f64 {
+        unimplemented!()
     }
 }
 
@@ -102,9 +110,8 @@ impl<T> TSPInstance<T> {
     }
 }
 
-
-impl<T: Eq + Hash + Copy> Scoring for TSPInstance<T> {
-    type Genotype = TSPValue<T>;
+/*
+impl<T: Eq + Hash + Copy, P> Scoring for TSPInstance<T> {
 
     fn score(&self, genotype: &Self::Genotype) -> f64 {
 
@@ -117,6 +124,7 @@ impl<T: Eq + Hash + Copy> Scoring for TSPInstance<T> {
         return self.max_dist*genotype.permutation.len() as f64-sum;
     }
 }
+*/
 
 pub struct TSPRandomSolution{}
 

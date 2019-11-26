@@ -8,14 +8,14 @@ use crate::organism::{Genome, OrganismGenerator};
 use crate::features::FeatureMapper;
 use std::collections::HashMap;
 
-pub trait ReplacementSelection<V,F,P>: Named {
+pub trait ReplacementSelection<V: Genome<P=P,H=H>,F,P,H,TF>: Named {
     fn initialize_grid(
         &self,
         pop_size: usize,
-        feature_mapper: &dyn FeatureMapper<V,F, P>,
+        feature_mapper: &dyn FeatureMapper<V,F,P>,
         problem: &P,
-        generator: &dyn OrganismGenerator<V,P>) -> Grid<V,F>;
-    fn select_replace(&self, grid: &mut Grid<V,F>, scorer: &dyn Scoring<Genotype=V>);
+        generator: &dyn OrganismGenerator<V,P>) -> Grid<V,TF>;
+    fn select_replace(&self, grid: &mut Grid<V,TF>);
 }
 
 #[derive(Copy, Clone)]
@@ -27,11 +27,11 @@ impl Named for SimpleReplacement {
     }
 }
 
-impl<V,P> ReplacementSelection<V,(),P> for SimpleReplacement {
+impl<V: Genome<P=P,H=H>,F,P,H> ReplacementSelection<V,F,P,H,()> for SimpleReplacement {
     fn initialize_grid(
         &self,
         pop_size: usize,
-        feature_mapper: &dyn FeatureMapper<V, (), P>,
+        feature_mapper: &dyn FeatureMapper<V, F, P>,
         problem: &P,
         generator: &dyn OrganismGenerator<V, P>) -> Grid<V, ()> {
         let mut gr = vec![];
@@ -47,7 +47,7 @@ impl<V,P> ReplacementSelection<V,(),P> for SimpleReplacement {
     }
 
 
-    fn select_replace(&self, grid: &mut Grid<V, ()>, scorer: &dyn Scoring<Genotype=V>) {
+    fn select_replace(&self, grid: &mut Grid<V, ()>) {
         let size = grid.cells.len();
         let mut rng = thread_rng();
         let index_a = rng.gen_range(0,size);
