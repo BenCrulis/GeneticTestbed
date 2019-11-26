@@ -134,12 +134,21 @@ impl<V: Genome<H=H,P=P>,P,F,TF,H> AlgorithmExec<V,P,F,H> for AlgoConfig<V,P,F,TF
 }
 
 
-#[derive(Clone)]
 struct MyConfig<V,P,F,H> {
     problem_config: Rc<ProblemConfig<V,P,F,H>>,
     common_config: Rc<CommonParameters>,
     algorithms: Vec<Rc<dyn AlgorithmExec<V,P,F,H>>>,
 }
+impl<V,P,F,H> Clone for MyConfig<V,P,F,H> {
+    fn clone(&self) -> Self {
+        MyConfig {
+            problem_config: self.problem_config.clone(),
+            common_config: self.common_config.clone(),
+            algorithms: self.algorithms.clone()
+        }
+    }
+}
+
 
 struct MyConfigIt<V,P,F,H> {
     my_config: Rc<MyConfig<V,P,F,H>>,
@@ -178,13 +187,8 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
     }
 
     fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>> {
-        let my_config: MyConfig<V,P,F,H> = MyConfig {
-            problem_config: self.problem_config.clone(),
-            common_config: self.common_config.clone(),
-            algorithms: self.algorithms.clone()
-        };
         Box::new(MyConfigIt{
-            my_config: Rc::new(my_config),
+            my_config: Rc::new(self.clone()),
             instance: self.problem_config.problem_instance_generator.generate_problem(),
             repetitions: 0,
             index_algo: 0
@@ -223,7 +227,7 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 
 
 
-fn simpleMetropolisGA<V,P,F,H>() -> Rc<AlgoConfig<V,P,F,(),H>> where V: Genome<H=H,P=P> {
+fn simple_metropolis_ga<V,P,F,H>() -> Rc<AlgoConfig<V,P,F,(),H>> where V: Genome<H=H,P=P> {
     return Rc::new(AlgoConfig {
         elitism: Rc::new(MetropolisHastings{}),
         replacement_selection: Rc::new(SimpleReplacement{})
@@ -257,7 +261,7 @@ fn main() {
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
-        algorithms: vec![simpleMetropolisGA::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, TSPHyperparameters>()]
+        algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, TSPHyperparameters>()]
     })];
 
     for mut config in configs {
