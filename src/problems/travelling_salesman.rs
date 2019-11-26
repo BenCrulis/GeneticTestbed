@@ -27,7 +27,7 @@ pub struct TSPHyperparameters {
     pub mutation_chance: f64
 }
 
-impl<T: Clone> Genome for TSPValue<T> {
+impl<T: Clone + Eq + Hash> Genome for TSPValue<T> {
     type H = TSPHyperparameters;
     type P = TSPInstance<T>;
     fn mutate(&self, hyperparameters: &TSPHyperparameters) -> Self where Self: Sized {
@@ -48,7 +48,14 @@ impl<T: Clone> Genome for TSPValue<T> {
     }
 
     fn score(&self, problem: &TSPInstance<T>) -> f64 {
-        unimplemented!()
+        let mut sum = 0.0;
+        for (x,y) in self.permutation.iter().zip(
+            self.permutation.iter().skip(1).cycle()) {
+            let t = (x.clone(), y.clone());
+            sum += *problem.distances.get(&t).unwrap();
+        }
+
+        return problem.max_dist*self.permutation.len() as f64-sum;
     }
 }
 
@@ -176,8 +183,17 @@ impl Parametrized for SimpleTSPInstanceGenerator {
 impl<'a> ProblemInstanceGenerator<TSPInstance<usize>> for SimpleTSPInstanceGenerator {
     fn generate_problem(&self) -> TSPInstance<usize> {
         let mut dists = HashMap::new();
+        let mut rng = thread_rng();
 
-        // TODO
+        for i in 0..self.number_of_cities {
+            for j in (i+1)..self.number_of_cities {
+
+                let dist = rng.gen_range(0.0,100.0);
+
+                dists.insert((i,j), dist);
+                dists.insert((j,i), dist);
+            }
+        }
 
         return TSPInstance::new(dists, self.number_of_cities)
     }

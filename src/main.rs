@@ -77,7 +77,6 @@ trait Config {
 }
 
 
-
 trait AlgorithmExec<V,P,F,H> {
 //    fn initialize_grid(&mut self);
     fn exec(&self, problem: &P) -> Box<dyn Iterator<Item=Iteration>>;
@@ -117,6 +116,7 @@ struct AllConfig<V,P,F,H> {
 }
 */
 
+
 impl<V: Genome<H=H,P=P>,P,F,TF,H> AlgorithmExec<V,P,F,H> for AlgoConfig<V,P,F,TF,H> {
     fn exec(&self, problem: &P) -> Box<dyn Iterator<Item=Iteration>> {
 
@@ -134,7 +134,7 @@ impl<V: Genome<H=H,P=P>,P,F,TF,H> AlgorithmExec<V,P,F,H> for AlgoConfig<V,P,F,TF
 }
 
 
-
+#[derive(Clone)]
 struct MyConfig<V,P,F,H> {
     problem_config: Rc<ProblemConfig<V,P,F,H>>,
     common_config: Rc<CommonParameters>,
@@ -172,14 +172,19 @@ impl<V,P,F,H> Iterator for MyConfigIt<V,P,F,H> {
     }
 }
 
-impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for Rc<MyConfig<V,P,F,H>> {
+impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
     fn get_problem_config_parameters(&self) -> HashMap<String, Parameter, RandomState> {
         unimplemented!()
     }
 
     fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>> {
+        let my_config: MyConfig<V,P,F,H> = MyConfig {
+            problem_config: self.problem_config.clone(),
+            common_config: self.common_config.clone(),
+            algorithms: self.algorithms.clone()
+        };
         Box::new(MyConfigIt{
-            my_config: self.clone(),
+            my_config: Rc::new(my_config),
             instance: self.problem_config.problem_instance_generator.generate_problem(),
             repetitions: 0,
             index_algo: 0
@@ -217,6 +222,14 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 }
 
 
+
+fn simpleMetropolisGA<V,P,F,H>() -> Rc<AlgoConfig<V,P,F,(),H>> where V: Genome<H=H,P=P> {
+    return Rc::new(AlgoConfig {
+        elitism: Rc::new(MetropolisHastings{}),
+        replacement_selection: Rc::new(SimpleReplacement{})
+    })
+}
+
 fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,Vec<usize>,TSPHyperparameters>> {
     Rc::new(ProblemConfig {
         random_organism_generator: Rc::new(TSPRandomSolution{}),
@@ -232,12 +245,20 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
 fn main() {
     println!("Hello, world!");
 
-
+    let common_config = CommonParameters {
+        population_size: 100,
+        number_of_repetitions: 10,
+        number_of_iterations: 10
+    };
 
     let target_population_size = 100_usize;
 
 
-    let configs: Vec<Rc<dyn Config>> = vec![];
+    let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
+        problem_config: tsp_problem_config(),
+        common_config: Rc::new(common_config),
+        algorithms: vec![simpleMetropolisGA::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, TSPHyperparameters>()]
+    })];
 
     for mut config in configs {
         let p_params = config.get_problem_config_parameters();
