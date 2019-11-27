@@ -11,10 +11,15 @@ pub trait ReplacementSelection<V: Genome<P=P,H=H>,F,P,H,TF>: Named {
     fn initialize_grid(
         &self,
         pop_size: usize,
-        feature_mapper: &dyn FeatureMapper<V,F,P>,
+        feature_mapper: &dyn FeatureMapper<V,F,P>,,
         problem: &P,
         generator: &dyn OrganismGenerator<V,P>) -> Grid<V,TF>;
-    fn select_replace(&self, grid: &mut Grid<V,TF>);
+    fn select_replace(
+        &self,
+        grid: &mut Grid<V,TF>,
+        feature_mapper: &dyn FeatureMapper<V,F,P>,
+        problem: &P,
+        generator: &dyn OrganismGenerator<V,P>);
 }
 
 #[derive(Copy, Clone)]
@@ -28,11 +33,11 @@ impl Named for SimpleReplacement {
 
 impl<V: Genome<P=P,H=H>,F,P,H> ReplacementSelection<V,F,P,H,()> for SimpleReplacement {
     fn initialize_grid(
-        &self,
-        pop_size: usize,
-        feature_mapper: &dyn FeatureMapper<V, F, P>,
-        problem: &P,
-        generator: &dyn OrganismGenerator<V, P>) -> Grid<V, ()> {
+            &self,
+            pop_size: usize,
+            feature_mapper: &dyn FeatureMapper<V, F, P>,
+            problem: &P,
+            generator: &dyn OrganismGenerator<V, P>) -> Grid<V, ()> {
         let mut gr = vec![];
         for i in 0..pop_size {
             let mut hm = HashMap::new();
@@ -46,7 +51,10 @@ impl<V: Genome<P=P,H=H>,F,P,H> ReplacementSelection<V,F,P,H,()> for SimpleReplac
     }
 
 
-    fn select_replace(&self, grid: &mut Grid<V, ()>) {
+    fn select_replace(&self, grid: &mut Grid<V, ()>,
+                      feature_mapper: &dyn FeatureMapper<V,F,P>,
+                      problem: &P,
+                      generator: &dyn OrganismGenerator<V,P>) {
         let size = grid.cells.len();
         let mut rng = thread_rng();
         let index_a = rng.gen_range(0,size);
@@ -60,6 +68,7 @@ impl<V: Genome<P=P,H=H>,F,P,H> ReplacementSelection<V,F,P,H,()> for SimpleReplac
 
 struct GeneralizedMAPElite {
     use_features: bool,
+    use_hyperparameter_mapping: bool,
     number_of_spatial_dimensions: usize
 }
 
@@ -74,7 +83,10 @@ impl<V: Genome<P=P,H=H>,F,P,H,TF> ReplacementSelection<V,F,P,H,TF> for Generaliz
         unimplemented!()
     }
 
-    fn select_replace(&self, grid: &mut Grid<V, TF>) {
+    fn select_replace(&self, grid: &mut Grid<V, TF>,
+                      feature_mapper: &dyn FeatureMapper<V,F,P>,
+                      problem: &P,
+                      generator: &dyn OrganismGenerator<V,P>) {
         unimplemented!()
     }
 }
