@@ -1,6 +1,5 @@
 use std::vec::Vec;
 use std::collections::HashMap;
-use super::super::Scoring;
 
 extern crate ordered_float;
 use ordered_float::OrderedFloat;

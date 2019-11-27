@@ -1,5 +1,4 @@
 use super::super::common::Named;
-use crate::evaluation::scoring::Scoring;
 use crate::common::Parametrized;
 
 #[derive(Copy, Clone)]

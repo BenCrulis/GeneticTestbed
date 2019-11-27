@@ -22,7 +22,6 @@ use common::ParameterConfig;
 use common::str_param;
 
 use problems::rastrigin::{rastrigin,custom_rastrigin,regularized_rastrigin};
-use evaluation::scoring::Scoring;
 use organism::organism::Organism;
 use organism::organism::OrganismGenerator;
 use std::collections::HashMap;
@@ -49,7 +48,7 @@ use problems::travelling_salesman::{
 use crate::problems::travelling_salesman::{TSPFeatureMapper, SimpleTSPInstanceGenerator};
 use std::rc::Rc;
 use crate::organism::Genome;
-use crate::problems::{DiscreteHyperparameters, ContinuousHyperparameters};
+use crate::problems::{DiscreteHyperparameters, ContinuousHyperparameters, SpatialMapper};
 
 #[derive(Clone)]
 struct Iteration {
@@ -106,7 +105,6 @@ impl Parametrized for CommonParameters {
 struct ProblemConfig<V,P,F,H> {
     random_organism_generator: Rc<dyn OrganismGenerator<V,P>>,
     problem_instance_generator: Rc<dyn ProblemInstanceGenerator<P>>,
-    scorer_generator: Rc<dyn Scoring<V,P>>,
     feature_mapper: Rc<dyn FeatureMapper<V, F, P>>,
     constant_hyperparameters: H,
     hyperparameter_mapper: Rc<dyn Environment<H>>
@@ -244,10 +242,9 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
     Rc::new(ProblemConfig {
         random_organism_generator: Rc::new(TSPRandomSolution{}),
         problem_instance_generator: Rc::new(SimpleTSPInstanceGenerator{ number_of_cities: 100 }),
-        scorer_generator: unimplemented!(),
         feature_mapper: Rc::new(TSPFeatureMapper{ number_cities_mapped: 2 }),
         constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.2 },
-        hyperparameter_mapper: unimplemented!()
+        hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 })
     })
 }
 

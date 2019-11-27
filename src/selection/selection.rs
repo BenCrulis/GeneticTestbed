@@ -1,6 +1,5 @@
 use self::super::super::common::Named;
 use super::super::organism::organism::{Organism};
-use super::super::evaluation::scoring::Scoring;
 use super::super::organism::grid::Grid;
 
 use rand::{thread_rng, Rng};
