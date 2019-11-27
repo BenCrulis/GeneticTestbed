@@ -11,7 +11,7 @@ pub trait ReplacementSelection<V: Genome<P=P,H=H>,F,P,H,TF>: Named {
     fn initialize_grid(
         &self,
         pop_size: usize,
-        feature_mapper: &dyn FeatureMapper<V,F,P>,,
+        feature_mapper: &dyn FeatureMapper<V,F,P>,
         problem: &P,
         generator: &dyn OrganismGenerator<V,P>) -> Grid<V,TF>;
     fn select_replace(

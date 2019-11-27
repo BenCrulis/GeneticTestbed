@@ -72,7 +72,7 @@ trait Config {
 
 trait AlgorithmExec<V,P,F,H> {
 //    fn initialize_grid(&mut self);
-    fn exec(&self, problem: &P) -> Box<dyn Iterator<Item=Iteration>>;
+    fn exec(&self, config: Rc<ProblemState<V,P,F,H>>) -> Box<dyn Iterator<Item=Iteration>>;
 }
 
 
@@ -121,7 +121,7 @@ struct AllConfig<V,P,F,H> {
 
 
 impl<V: Genome<H=H,P=P>,P,F,TF,H> AlgorithmExec<V,P,F,H> for AlgoConfig<V,P,F,TF,H> {
-    fn exec(&self, problem: &P) -> Box<dyn Iterator<Item=Iteration>> {
+    fn exec(&self, config: Rc<ProblemState<V,P,F,H>>) -> Box<dyn Iterator<Item=Iteration>> {
 
         /*
         let gr = self.replacement_selection.initialize_grid();
@@ -132,7 +132,13 @@ impl<V: Genome<H=H,P=P>,P,F,TF,H> AlgorithmExec<V,P,F,H> for AlgoConfig<V,P,F,TF
             i: 0
         });
         */
-        unimplemented!()
+        return Box::new(AlgorithmState {
+            problem_state: config.clone(),
+            grid: self.replacement_selection.initialize_grid(5,
+                         config.problem_config.feature_mapper.as_ref(),
+                 &config.instance, config.problem_config.random_organism_generator.as_ref()),
+            i: 0
+        });
     }
 }
 
