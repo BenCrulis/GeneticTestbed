@@ -17,11 +17,10 @@ pub trait Environment<H: Hyperparameter>: Named {
     fn number_of_hyperparameters(&self) -> usize {
         return H::number_of_hyperparameters()
     }
-    fn constant_hyperparameters(&self) -> H;
     fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> H;
 }
 
-impl<H> Named for SpatialMapper<H> {
+impl Named for SpatialMapper {
     fn name(&self) -> String {
         String::from("Spatial mapping")
     }
@@ -54,11 +53,7 @@ impl Hyperparameter for ContinuousHyperparameters {
 // Continuous hyperparameters mapping
 //
 
-impl Environment<ContinuousHyperparameters> for SpatialMapper<ContinuousHyperparameters> {
-    fn constant_hyperparameters(&self) -> ContinuousHyperparameters {
-        self.constant
-    }
-
+impl Environment<ContinuousHyperparameters> for SpatialMapper {
     fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> ContinuousHyperparameters {
         let (v1, m1) = coordinates.get(0).unwrap();
         let (v2, m2) = coordinates.get(1).unwrap();
@@ -76,16 +71,11 @@ impl Environment<ContinuousHyperparameters> for SpatialMapper<ContinuousHyperpar
 //
 
 #[derive(Copy, Clone)]
-pub struct SpatialMapper<H> {
+pub struct SpatialMapper {
     pub number_of_additional_dimensions: usize,
-    pub constant: H
 }
 
-impl Environment<DiscreteHyperparameters> for SpatialMapper<DiscreteHyperparameters> {
-    fn constant_hyperparameters(&self) -> DiscreteHyperparameters {
-        self.constant
-    }
-
+impl Environment<DiscreteHyperparameters> for SpatialMapper {
     fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> DiscreteHyperparameters {
         let (val,max) = coordinates.get(0).unwrap();
         let prob: f64 = (val+1) as f64/((max+2) as f64);
