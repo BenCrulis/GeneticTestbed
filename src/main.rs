@@ -91,6 +91,17 @@ struct CommonParameters {
     number_of_iterations: u64,
 }
 
+impl Parametrized for CommonParameters {
+    fn parameters(&self) -> HashMap<String, Parameter, RandomState> {
+        let mut hm = HashMap::new();
+        hm.insert("population size".to_string(),Parameter::Integer(self.population_size as i64));
+        hm.insert("total repetitions".to_string(), Parameter::Integer(self.number_of_repetitions as i64));
+        hm.insert("iterations per run".to_string(), Parameter::Integer(self.number_of_iterations as i64));
+        return hm;
+    }
+}
+
+
 #[derive(Clone)]
 struct ProblemConfig<V,P,F,H> {
     random_organism_generator: Rc<dyn OrganismGenerator<V,P>>,
@@ -176,8 +187,9 @@ impl<V,P,F,H> Iterator for MyConfigIt<V,P,F,H> {
 }
 
 impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
-    fn get_problem_config_parameters(&self) -> HashMap<String, Parameter, RandomState> {
-        unimplemented!()
+    fn get_problem_config_parameters(&self) -> ParameterConfig {
+        // TODO
+        return self.common_config.parameters()
     }
 
     fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>> {
