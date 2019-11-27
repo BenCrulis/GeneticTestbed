@@ -58,6 +58,29 @@ impl<V: Genome<P=P,H=H>,F,P,H> ReplacementSelection<V,F,P,H,()> for SimpleReplac
     }
 }
 
+
+struct GeneralizedMAPElite {
+    use_features: bool,
+    number_of_spatial_dimensions: usize
+}
+
+impl Named for GeneralizedMAPElite {
+    fn name(&self) -> String {
+        String::from("Generalized MAP Elite algorithm")
+    }
+}
+
+impl<V: Genome<P=P,H=H>,F,P,H,TF> ReplacementSelection<V,F,P,H,TF> for GeneralizedMAPElite {
+    fn initialize_grid(&self, pop_size: usize, feature_mapper: &dyn FeatureMapper<V, F, P>, problem: &P, generator: &dyn OrganismGenerator<V, P>) -> Grid<V, TF> {
+        unimplemented!()
+    }
+
+    fn select_replace(&self, grid: &mut Grid<V, TF>) {
+        unimplemented!()
+    }
+}
+
+
 pub trait Elitism: Named {
     fn choose(&self, score_a: f64, score_b: f64) -> bool;
 }

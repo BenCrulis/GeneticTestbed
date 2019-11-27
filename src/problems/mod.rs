@@ -9,45 +9,19 @@ pub trait ProblemInstanceGenerator<P>: Named + Parametrized {
     fn generate_problem(&self) -> P;
 }
 
+pub trait Hyperparameter {
+    fn number_of_hyperparameters() -> usize;
+}
 
-pub trait Environment<H>: Named {
-    fn number_of_dimensions(&self) -> usize;
+pub trait Environment<H: Hyperparameter>: Named {
+    fn number_of_hyperparameters(&self) -> usize {
+        return H::number_of_hyperparameters()
+    }
+    fn constant_hyperparameters(&self) -> H;
     fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> H;
 }
 
-#[derive(Copy, Clone)]
-pub struct ConstantEnv<H> {
-    pub constant: H,
-    pub dimensions: usize
-}
-
-impl<H> ConstantEnv<H> {
-    pub fn new(constant: H, dimensions: usize) -> Self {
-        ConstantEnv {
-            constant,
-            dimensions
-        }
-    }
-}
-
-impl<H> Named for ConstantEnv<H> {
-    fn name(&self) -> String {
-        String::from("Constant hyperparameters")
-    }
-}
-
-impl<H: Copy> Environment<H> for ConstantEnv<H> {
-    fn number_of_dimensions(&self) -> usize {
-        self.dimensions
-    }
-
-    fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> H {
-        self.constant
-    }
-}
-
-
-impl Named for SpatialMapper {
+impl<H> Named for SpatialMapper<H> {
     fn name(&self) -> String {
         String::from("Spatial mapping")
     }
@@ -64,13 +38,25 @@ pub struct ContinuousHyperparameters {
     pub mutation_size: f64
 }
 
+impl Hyperparameter for DiscreteHyperparameters {
+    fn number_of_hyperparameters() -> usize {
+        return 1;
+    }
+}
+
+impl Hyperparameter for ContinuousHyperparameters {
+    fn number_of_hyperparameters() -> usize {
+        return 2;
+    }
+}
+
 //
 // Continuous hyperparameters mapping
 //
 
-impl Environment<ContinuousHyperparameters> for SpatialMapper {
-    fn number_of_dimensions(&self) -> usize {
-        self.number_of_additional_dimensions + 2
+impl Environment<ContinuousHyperparameters> for SpatialMapper<ContinuousHyperparameters> {
+    fn constant_hyperparameters(&self) -> ContinuousHyperparameters {
+        self.constant
     }
 
     fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> ContinuousHyperparameters {
@@ -90,13 +76,14 @@ impl Environment<ContinuousHyperparameters> for SpatialMapper {
 //
 
 #[derive(Copy, Clone)]
-pub struct SpatialMapper {
-    pub number_of_additional_dimensions: usize
+pub struct SpatialMapper<H> {
+    pub number_of_additional_dimensions: usize,
+    pub constant: H
 }
 
-impl Environment<DiscreteHyperparameters> for SpatialMapper {
-    fn number_of_dimensions(&self) -> usize {
-        self.number_of_additional_dimensions + 1
+impl Environment<DiscreteHyperparameters> for SpatialMapper<DiscreteHyperparameters> {
+    fn constant_hyperparameters(&self) -> DiscreteHyperparameters {
+        self.constant
     }
 
     fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> DiscreteHyperparameters {
