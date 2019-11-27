@@ -21,6 +21,15 @@ pub struct ConstantEnv<H> {
     pub dimensions: usize
 }
 
+impl<H> ConstantEnv<H> {
+    pub fn new(constant: H, dimensions: usize) -> Self {
+        ConstantEnv {
+            constant,
+            dimensions
+        }
+    }
+}
+
 impl<H> Named for ConstantEnv<H> {
     fn name(&self) -> String {
         String::from("Constant hyperparameters")

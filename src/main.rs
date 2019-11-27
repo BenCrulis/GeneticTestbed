@@ -49,7 +49,7 @@ use problems::travelling_salesman::{
 use crate::problems::travelling_salesman::{TSPFeatureMapper, SimpleTSPInstanceGenerator};
 use std::rc::Rc;
 use crate::organism::Genome;
-use crate::problems::DiscreteHyperparameters;
+use crate::problems::{DiscreteHyperparameters, ConstantEnv};
 
 #[derive(Clone)]
 struct Iteration {
@@ -80,6 +80,7 @@ trait AlgorithmExec<V,P,F,H> {
 
 #[derive(Clone)]
 struct AlgoConfig<V,P,F,TF,H> {
+    environment: Rc<dyn Environment<H>>,
     elitism: Rc<dyn Elitism>,
     replacement_selection: Rc<dyn ReplacementSelection<V,F,P,H,TF>>
 }
@@ -221,8 +222,9 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 
 
 
-fn simple_metropolis_ga<V,P,F,H>() -> Rc<AlgoConfig<V,P,F,(),H>> where V: Genome<H=H,P=P> {
+fn simple_metropolis_ga<V,P,F,H: Copy + 'static>(hyperparameters: H) -> Rc<AlgoConfig<V,P,F,(),H>> where V: Genome<H=H,P=P> {
     return Rc::new(AlgoConfig {
+        environment: Rc::new(ConstantEnv::new(hyperparameters, 1)),
         elitism: Rc::new(MetropolisHastings{}),
         replacement_selection: Rc::new(SimpleReplacement{})
     })
@@ -255,7 +257,7 @@ fn main() {
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
-        algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>()]
+        algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>(DiscreteHyperparameters{mutation_chance: 0.2})]
     })];
 
     for mut config in configs {
