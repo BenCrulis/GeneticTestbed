@@ -45,11 +45,11 @@ use std::hash::Hash;
 use problems::travelling_salesman::{
     TSPValue,
     TSPRandomSolution,
-    TSPHyperparameters,
     TSPInstance};
 use crate::problems::travelling_salesman::{TSPFeatureMapper, SimpleTSPInstanceGenerator};
 use std::rc::Rc;
 use crate::organism::Genome;
+use crate::problems::DiscreteHyperparameters;
 
 #[derive(Clone)]
 struct Iteration {
@@ -228,13 +228,13 @@ fn simple_metropolis_ga<V,P,F,H>() -> Rc<AlgoConfig<V,P,F,(),H>> where V: Genome
     })
 }
 
-fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,Vec<usize>,TSPHyperparameters>> {
+fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,Vec<usize>,DiscreteHyperparameters>> {
     Rc::new(ProblemConfig {
         random_organism_generator: Rc::new(TSPRandomSolution{}),
         problem_instance_generator: Rc::new(SimpleTSPInstanceGenerator{ number_of_cities: 100 }),
         scorer_generator: unimplemented!(),
         feature_mapper: Rc::new(TSPFeatureMapper{ number_cities_mapped: 2 }),
-        constant_hyperparameters: TSPHyperparameters{ mutation_chance: 0.2 },
+        constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.2 },
         hyperparameter_mapper: unimplemented!()
     })
 }
@@ -255,7 +255,7 @@ fn main() {
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
-        algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, TSPHyperparameters>()]
+        algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>()]
     })];
 
     for mut config in configs {

@@ -15,22 +15,17 @@ use rand::prelude::SliceRandom;
 use std::ops::Range;
 
 use super::ProblemInstanceGenerator;
-
-
+use crate::problems::DiscreteHyperparameters;
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash)]
 pub struct TSPValue<T> {
     pub permutation: Vec<T>
 }
 
-pub struct TSPHyperparameters {
-    pub mutation_chance: f64
-}
-
 impl<T: Clone + Eq + Hash> Genome for TSPValue<T> {
-    type H = TSPHyperparameters;
+    type H = DiscreteHyperparameters;
     type P = TSPInstance<T>;
-    fn mutate(&self, hyperparameters: &TSPHyperparameters) -> Self where Self: Sized {
+    fn mutate(&self, hyperparameters: &DiscreteHyperparameters) -> Self where Self: Sized {
         let mut new = self.permutation.clone();
 
         let mut rng = thread_rng();
