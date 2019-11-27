@@ -37,6 +37,7 @@ use selection::GreedySelection;
 use rand::{thread_rng, Rng};
 
 use problems::ProblemInstanceGenerator;
+use problems::Environment;
 use crate::organism::grid::Grid;
 use crate::features::FeatureMapper;
 use std::hash::Hash;
@@ -63,38 +64,6 @@ struct Iteration {
     pop_score_variance: f64,
 }
 
-struct MutationHyperparameters {
-    mutation_chance: f64
-}
-
-trait Environment<H>: Named {
-    fn number_of_dimensions(&self) -> usize;
-    fn constant_hyperparameters(&self) -> H;
-    fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> H {
-        self.constant_hyperparameters()
-    }
-}
-
-struct ConstantEnv<H> {
-    constant: H,
-    dimensions: usize
-}
-
-impl<H> Named for ConstantEnv<H> {
-    fn name(&self) -> String {
-        String::from("Constant hyperparameters")
-    }
-}
-
-impl<H: Copy> Environment<H> for ConstantEnv<H> {
-    fn number_of_dimensions(&self) -> usize {
-        self.dimensions
-    }
-
-    fn constant_hyperparameters(&self) -> H {
-        self.constant
-    }
-}
 
 trait Config {
     fn get_problem_config_parameters(&self) -> ParameterConfig;
