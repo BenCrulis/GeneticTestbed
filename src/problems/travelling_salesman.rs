@@ -17,16 +17,15 @@ use super::ProblemInstanceGenerator;
 use crate::problems::DiscreteHyperparameters;
 use std::rc::Rc;
 use crate::scoring::Scorer;
+use crate::algorithm::mutation::Mutator;
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash)]
 pub struct TSPValue<T> {
     pub permutation: Vec<T>
 }
 
-
-struct TSPScorer {
-
-}
+#[derive(Copy, Clone)]
+pub struct TSPScorer {}
 
 impl<T: Eq + Hash + Clone> Scorer<TSPValue<T>, TSPInstance<T>> for TSPScorer {
     fn score(&self, genome: &TSPValue<T>, problem: &TSPInstance<T>) -> f64 {
@@ -41,29 +40,30 @@ impl<T: Eq + Hash + Clone> Scorer<TSPValue<T>, TSPInstance<T>> for TSPScorer {
     }
 }
 
-/*
-impl<T: Clone + Eq + Hash> Genome for TSPValue<T> {
-    type H = DiscreteHyperparameters;
-    type P = TSPInstance<T>;
-    fn mutate(&self, hyperparameters: &DiscreteHyperparameters) -> Self where Self: Sized {
-        let mut new = self.permutation.clone();
+#[derive(Copy, Clone)]
+pub struct TSPMutator {}
+
+impl<T: Clone> Mutator<TSPValue<T>, DiscreteHyperparameters> for TSPMutator {
+    fn mutate(&self, genome: &mut TSPValue<T>, hyperparameters: &DiscreteHyperparameters) {
+        let mut cities = &mut genome.permutation;
 
         let mut rng = thread_rng();
 
         while rng.gen::<f64>() < hyperparameters.mutation_chance {
 
-            let index_a = rng.gen_range(0,new.len());
+            let index_a = rng.gen_range(0,cities.len());
 
-            let index_b= rng.gen_range(0, new.len());
+            let mut index_b= rng.gen_range(0, cities.len());
             while index_b == index_a {
-
+                index_b= rng.gen_range(0, cities.len());
             }
-        }
-        return TSPValue{permutation: new};
-    }
 
+            let tmp = cities[index_b].clone();
+            cities[index_b] = cities[index_a].clone();
+            cities[index_a] = tmp;
+        }
+    }
 }
-*/
 
 #[derive(Clone)]
 pub struct TSPInstance<T> {

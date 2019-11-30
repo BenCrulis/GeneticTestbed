@@ -25,6 +25,7 @@ impl Named for MetropolisHastings {
 impl Elitism for MetropolisHastings {
     fn choose(&self, score_a: f64, score_b: f64) -> bool {
         let mut trng = thread_rng();
+        assert!(score_a >= 0.0 && score_b >= 0.0);
         return trng.gen::<f64>() < score_a/score_b;
     }
 }

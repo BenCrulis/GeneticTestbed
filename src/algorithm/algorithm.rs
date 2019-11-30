@@ -7,19 +7,16 @@ use crate::algorithm::selection::Elitism;
 use std::rc::Rc;
 use crate::problems::Environment;
 use crate::scoring::Scorer;
+use crate::algorithm::config::ProblemConfig;
 
 
-pub trait ReplacementSelection<V,F,P,H>: Named {
+pub trait ReplacementSelection<V,P,F,H>: Named {
     fn initialize_solver(
         &self,
         pop_size: usize,
-        feature_mapper: Rc<dyn FeatureMapper<V,F,P>>,
         problem: Rc<P>,
-        scorer: Rc<dyn Scorer<V,P>>,
-        environment: Rc<dyn Environment<H>>,
-        constant_hyperparameters: Rc<H>,
-        generator: Rc<dyn OrganismGenerator<V,P>>,
-        elitism: Rc<dyn Elitism>) -> Box<dyn UpdatableSolver<V>>;
+        elitism: Rc<dyn Elitism>,
+        problem_config: Rc<ProblemConfig<V,P,F,H>>) -> Box<dyn UpdatableSolver<V>>;
 
 }
 

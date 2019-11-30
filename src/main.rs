@@ -55,6 +55,7 @@ use std::hash::Hash;
 use crate::algorithm::algorithm::UpdatableSolver;
 use crate::scoring::Scorer;
 use crate::algorithm::mutation::Mutator;
+use crate::problems::travelling_salesman::{TSPMutator, TSPScorer};
 
 
 #[derive(Clone)]
@@ -225,7 +226,7 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 
 
 
-fn simple_metropolis_ga<V: 'static,P: 'static,F,H: Copy + 'static>() -> Rc<AlgoConfig<V,P,F,H>> {
+fn simple_metropolis_ga<V: Clone + 'static,P: 'static,F: 'static,H: Copy + 'static>() -> Rc<AlgoConfig<V,P,F,H>> {
     return Rc::new(AlgoConfig {
         elitism: Rc::new(MetropolisHastings{}),
         replacement_selection: Rc::new(SimpleReplacement{})
@@ -239,8 +240,8 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
         feature_mapper: Rc::new(TSPFeatureMapper{ number_cities_mapped: 2 }),
         constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.2 },
         hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 }),
-        mutator: unimplemented!(),
-        scorer: unimplemented!()
+        mutator: Rc::new(TSPMutator{}),
+        scorer: Rc::new(TSPScorer{})
     })
 }
 

@@ -9,16 +9,16 @@ use std::rc::Rc;
 use crate::algorithm::selection::Elitism;
 use crate::problems::Environment;
 use crate::scoring::Scorer;
+use crate::algorithm::config::ProblemConfig;
 
 #[derive(Copy, Clone)]
 pub struct SimpleReplacement {}
 
-struct SimpleReplacementExec<V,P,H> {
+struct SimpleReplacementExec<V,P,F,H> {
     problem: Rc<P>,
     organisms: Vec<Organism<V>>,
-    elitism: Rc<dyn Elitism>,
-    scorer: Rc<dyn Scorer<V,P>>,
-    hyperparameters: Rc<H>
+    problem_config: Rc<ProblemConfig<V,P,F,H>>,
+    elitism: Rc<dyn Elitism>
 }
 
 impl Named for SimpleReplacement {
@@ -27,16 +27,14 @@ impl Named for SimpleReplacement {
     }
 }
 
-impl<V: 'static,F,P: 'static,H: 'static> ReplacementSelection<V,F,P,H> for SimpleReplacement {
+impl<V: Clone + 'static,P: 'static,F: 'static,H: Clone + 'static> ReplacementSelection<V,P,F,H> for SimpleReplacement {
     fn initialize_solver(
             &self, pop_size: usize,
-            feature_mapper: Rc<dyn FeatureMapper<V, F, P>>,
             problem: Rc<P>,
-            scorer: Rc<dyn Scorer<V,P>>,
-            environment: Rc<dyn Environment<H>>,
-            constant_hyperparameters: Rc<H>,
-            generator: Rc<dyn OrganismGenerator<V, P>>,
-            elitism: Rc<dyn Elitism>) -> Box<dyn UpdatableSolver<V>> {
+            elitism: Rc<dyn Elitism>,
+            problem_config: Rc<ProblemConfig<V,P,F,H>>) -> Box<dyn UpdatableSolver<V>> {
+        let generator = &problem_config.random_organism_generator;
+
         let mut gr = vec![];
         for i in 0..pop_size {
             gr.push(generator.generate_organism(problem.clone()));
@@ -44,15 +42,16 @@ impl<V: 'static,F,P: 'static,H: 'static> ReplacementSelection<V,F,P,H> for Simpl
         return Box::new(SimpleReplacementExec {
             problem: problem.clone(),
             organisms: gr,
-            elitism: elitism.clone(),
-            scorer: scorer.clone(),
-            hyperparameters: constant_hyperparameters.clone()
+            problem_config: problem_config.clone(),
+            elitism
         });
     }
 }
 
-impl<V,P,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,H> {
+impl<V: Clone,P,F,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,F,H> {
     fn update(&mut self) -> Vec<Organism<V>> {
+        let scorer = &self.problem_config.scorer;
+
         let size = self.organisms.len();
         let mut rng = thread_rng();
         let index_a = rng.gen_range(0,size);
@@ -65,7 +64,7 @@ impl<V,P,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,H> {
 
         {
             let org_a= self.organisms.get_mut(index_a).unwrap();
-            score_a = org_a.score_with_cache(self.scorer.clone(), self.problem.as_ref());
+            score_a = org_a.score_with_cache(scorer.clone(), self.problem.as_ref());
 
         }
 
@@ -73,11 +72,28 @@ impl<V,P,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,H> {
 
         {
             let org_b = self.organisms.get_mut(index_b).unwrap();
-            score_b = org_b.score_with_cache(self.scorer.clone(), self.problem.as_ref());
+            score_b = org_b.score_with_cache(scorer.clone(), self.problem.as_ref());
         }
 
+        let keep_first = self.elitism.choose(score_a, score_b);
+
+        let mut to_replace = index_a;
+        let mut to_keep = index_b;
+        if keep_first {
+            to_replace = index_b;
+            to_keep = index_a;
+        }
+
+        let mut new_org: Organism<V> = self.organisms.get(to_keep)
+            .unwrap()
+            .clone();
+
+        new_org.mutate(self.problem_config.mutator.clone(),
+                    &self.problem_config.constant_hyperparameters);
+
+        self.organisms[to_replace] = new_org;
 
 
-        unimplemented!()
+        return self.organisms.clone();
     }
 }
