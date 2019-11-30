@@ -3,7 +3,7 @@ use super::super::organism::organism::{Organism};
 use super::super::organism::grid::Grid;
 
 use rand::{thread_rng, Rng};
-use crate::organism::{Genome, OrganismGenerator};
+use crate::organism::{OrganismGenerator};
 use crate::features::FeatureMapper;
 use std::collections::HashMap;
 

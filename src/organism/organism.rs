@@ -1,21 +1,26 @@
 use super::super::common::Named;
 use crate::common::Parametrized;
+use std::rc::Rc;
+use crate::algorithm::mutation::Mutator;
+use crate::scoring::Scorer;
 
 #[derive(Copy, Clone)]
 pub struct Organism<T> {
     pub genotype: T,
-    pub score: Option<f64>
+    score: Option<f64>
 }
 
-impl<T,H,P> Organism<T> where T: Genome<H=H,P=P>  {
-    fn get_score(&mut self, problem: &P) -> f64 {
-        self.genotype.score(problem)
+impl<T> Organism<T> {
+
+    pub fn mutate<H>(&mut self, mutator: Rc<dyn Mutator<T,H>>, hyperparameters: &H) {
+        mutator.mutate(&mut self.genotype, hyperparameters);
+        self.score = None;
     }
 
-    fn score_with_cache(&mut self, problem: &P) -> f64 {
+    pub fn score_with_cache<P>(&mut self, scorer: Rc<dyn Scorer<T,P>>, problem: &P) -> f64 {
         match self.score {
             None => {
-                let s = self.genotype.score(problem);
+                let s = scorer.score(&self.genotype, problem);
                 self.score = Some(s);
                 s
             }
@@ -26,16 +31,9 @@ impl<T,H,P> Organism<T> where T: Genome<H=H,P=P>  {
 
 
 pub trait OrganismGenerator<V,P>: Named + Parametrized {
-    fn generate(&self, problem: &P) -> V;
-    fn generate_organism(&self, problem: &P) -> Organism<V> {
+    fn generate(&self, problem: Rc<P>) -> V;
+    fn generate_organism(&self, problem: Rc<P>) -> Organism<V> {
         return Organism{genotype: self.generate(problem),
                         score: Option::None}
     }
-}
-
-pub trait Genome: Clone + Sized {
-    type H;
-    type P;
-    fn mutate(&self, hyperparameters: &Self::H) -> Self;
-    fn score(&self, problem: &Self::P) -> f64;
 }

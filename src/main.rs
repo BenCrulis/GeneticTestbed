@@ -10,10 +10,10 @@ use std::time::Instant;
 
 mod common;
 mod problems;
-mod evaluation;
 mod organism;
 mod algorithm;
 mod features;
+mod scoring;
 
 use std::collections::HashMap;
 use std::process::Output;
@@ -38,10 +38,10 @@ use problems::travelling_salesman::{
     TSPInstance};
 
 use organism::grid::Grid;
-use organism::Genome;
 use organism::organism::Organism;
 use organism::organism::OrganismGenerator;
 
+use algorithm::config::ProblemConfig;
 use algorithm::selection::Elitism;
 use algorithm::algorithm::ReplacementSelection;
 use algorithm::selection::MetropolisHastings;
@@ -53,6 +53,8 @@ use rand::{thread_rng, Rng};
 use features::FeatureMapper;
 use std::hash::Hash;
 use crate::algorithm::algorithm::UpdatableSolver;
+use crate::scoring::Scorer;
+use crate::algorithm::mutation::Mutator;
 
 
 #[derive(Clone)]
@@ -112,14 +114,7 @@ impl Parametrized for CommonParameters {
 }
 
 
-#[derive(Clone)]
-struct ProblemConfig<V,P,F,H> {
-    random_organism_generator: Rc<dyn OrganismGenerator<V,P>>,
-    problem_instance_generator: Rc<dyn ProblemInstanceGenerator<P>>,
-    feature_mapper: Rc<dyn FeatureMapper<V, F, P>>,
-    constant_hyperparameters: H,
-    hyperparameter_mapper: Rc<dyn Environment<H>>
-}
+
 
 
 
@@ -230,7 +225,7 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 
 
 
-fn simple_metropolis_ga<V,P,F,H: Copy + 'static>() -> Rc<AlgoConfig<V,P,F,H>> where V: Genome<H=H,P=P> {
+fn simple_metropolis_ga<V: 'static,P: 'static,F,H: Copy + 'static>() -> Rc<AlgoConfig<V,P,F,H>> {
     return Rc::new(AlgoConfig {
         elitism: Rc::new(MetropolisHastings{}),
         replacement_selection: Rc::new(SimpleReplacement{})
@@ -243,7 +238,9 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
         problem_instance_generator: Rc::new(SimpleTSPInstanceGenerator{ number_of_cities: 100 }),
         feature_mapper: Rc::new(TSPFeatureMapper{ number_cities_mapped: 2 }),
         constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.2 },
-        hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 })
+        hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 }),
+        mutator: unimplemented!(),
+        scorer: unimplemented!()
     })
 }
 

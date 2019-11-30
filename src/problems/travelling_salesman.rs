@@ -7,7 +7,7 @@ use std::hash::Hash;
 
 use self::super::super::common::*;
 use self::super::super::features::FeatureMapper;
-use crate::organism::{OrganismGenerator, Genome};
+use crate::organism::{OrganismGenerator};
 use crate::organism::Organism;
 use rand::{thread_rng, Rng};
 use rand::prelude::SliceRandom;
@@ -15,12 +15,33 @@ use std::ops::Range;
 
 use super::ProblemInstanceGenerator;
 use crate::problems::DiscreteHyperparameters;
+use std::rc::Rc;
+use crate::scoring::Scorer;
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash)]
 pub struct TSPValue<T> {
     pub permutation: Vec<T>
 }
 
+
+struct TSPScorer {
+
+}
+
+impl<T: Eq + Hash + Clone> Scorer<TSPValue<T>, TSPInstance<T>> for TSPScorer {
+    fn score(&self, genome: &TSPValue<T>, problem: &TSPInstance<T>) -> f64 {
+        let mut sum = 0.0;
+        for (x,y) in genome.permutation.iter().zip(
+            genome.permutation.iter().skip(1).cycle()) {
+            let t = (x.clone(), y.clone());
+            sum += *problem.distances.get(&t).unwrap();
+        }
+
+        return problem.max_dist*genome.permutation.len() as f64-sum;
+    }
+}
+
+/*
 impl<T: Clone + Eq + Hash> Genome for TSPValue<T> {
     type H = DiscreteHyperparameters;
     type P = TSPInstance<T>;
@@ -41,17 +62,8 @@ impl<T: Clone + Eq + Hash> Genome for TSPValue<T> {
         return TSPValue{permutation: new};
     }
 
-    fn score(&self, problem: &TSPInstance<T>) -> f64 {
-        let mut sum = 0.0;
-        for (x,y) in self.permutation.iter().zip(
-            self.permutation.iter().skip(1).cycle()) {
-            let t = (x.clone(), y.clone());
-            sum += *problem.distances.get(&t).unwrap();
-        }
-
-        return problem.max_dist*self.permutation.len() as f64-sum;
-    }
 }
+*/
 
 #[derive(Clone)]
 pub struct TSPInstance<T> {
@@ -97,7 +109,6 @@ impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>,TSPInstance<T>> for
 }
 
 
-
 impl<T> TSPInstance<T> {
     fn new(distances: HashMap<(T, T), f64>, number_of_cities: usize) -> Self {
         let max_dist: f64 = distances.values().map(|x| OrderedFloat::from(*x)).max().unwrap().into();
@@ -110,22 +121,6 @@ impl<T> TSPInstance<T> {
         }
     }
 }
-
-/*
-impl<T: Eq + Hash + Copy, P> Scoring for TSPInstance<T> {
-
-    fn score(&self, genotype: &Self::Genotype) -> f64 {
-
-        let mut sum = 0.0;
-        for (&x,&y) in genotype.permutation.iter().zip(
-            genotype.permutation.iter().skip(1).cycle()) {
-            sum += *self.distances.get(&(x,y)).unwrap();
-        }
-
-        return self.max_dist*genotype.permutation.len() as f64-sum;
-    }
-}
-*/
 
 pub struct TSPRandomSolution{}
 
@@ -144,7 +139,7 @@ impl Named for TSPRandomSolution {
 impl Parametrized for TSPRandomSolution {}
 
 impl OrganismGenerator<TSPValue<usize>,TSPInstance<usize>> for TSPRandomSolution {
-    fn generate(&self, problem: &TSPInstance<usize>) -> TSPValue<usize> {
+    fn generate(&self, problem: Rc<TSPInstance<usize>>) -> TSPValue<usize> {
         let mut v: Vec<usize> = (0..problem.number_of_cities).collect();
         let mut rng = thread_rng();
 

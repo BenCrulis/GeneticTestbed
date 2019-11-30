@@ -1,17 +1,25 @@
 use crate::organism::grid::Grid;
-use crate::organism::{Genome,Organism,OrganismGenerator};
+use crate::organism::{Organism,OrganismGenerator};
 use crate::features::FeatureMapper;
 
 use crate::common::*;
+use crate::algorithm::selection::Elitism;
+use std::rc::Rc;
+use crate::problems::Environment;
+use crate::scoring::Scorer;
 
 
-pub trait ReplacementSelection<V: Genome<P=P,H=H>,F,P,H>: Named {
+pub trait ReplacementSelection<V,F,P,H>: Named {
     fn initialize_solver(
         &self,
         pop_size: usize,
-        feature_mapper: &dyn FeatureMapper<V,F,P>,
-        problem: &P,
-        generator: &dyn OrganismGenerator<V,P>) -> Box<dyn UpdatableSolver<V>>;
+        feature_mapper: Rc<dyn FeatureMapper<V,F,P>>,
+        problem: Rc<P>,
+        scorer: Rc<dyn Scorer<V,P>>,
+        environment: Rc<dyn Environment<H>>,
+        constant_hyperparameters: Rc<H>,
+        generator: Rc<dyn OrganismGenerator<V,P>>,
+        elitism: Rc<dyn Elitism>) -> Box<dyn UpdatableSolver<V>>;
 
 }
 
