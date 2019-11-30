@@ -4,6 +4,7 @@ pub mod travelling_salesman;
 use crate::common::Named;
 use crate::common::Parametrized;
 use std::ops::Div;
+use crate::organism::Organism;
 
 pub trait ProblemInstanceGenerator<P>: Named + Parametrized {
     fn generate_problem(&self) -> P;

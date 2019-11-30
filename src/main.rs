@@ -12,8 +12,14 @@ mod common;
 mod problems;
 mod evaluation;
 mod organism;
-mod selection;
+mod algorithm;
 mod features;
+
+use std::collections::HashMap;
+use std::process::Output;
+use std::collections::hash_map::RandomState;
+use std::iter::Cycle;
+use std::rc::Rc;
 
 use common::Named;
 use common::Parametrized;
@@ -22,33 +28,32 @@ use common::ParameterConfig;
 use common::str_param;
 
 use problems::rastrigin::{rastrigin,custom_rastrigin,regularized_rastrigin};
-use organism::organism::Organism;
-use organism::organism::OrganismGenerator;
-use std::collections::HashMap;
-use std::process::Output;
-use std::collections::hash_map::RandomState;
-use std::iter::Cycle;
-
-use selection::{SimpleReplacement,ReplacementSelection};
-use selection::Elitism;
-use selection::MetropolisHastings;
-use selection::GreedySelection;
-use rand::{thread_rng, Rng};
-
 use problems::ProblemInstanceGenerator;
 use problems::Environment;
-use crate::organism::grid::Grid;
-use crate::features::FeatureMapper;
-use std::hash::Hash;
-
+use problems::travelling_salesman::{TSPFeatureMapper, SimpleTSPInstanceGenerator};
+use problems::{DiscreteHyperparameters, ContinuousHyperparameters, SpatialMapper};
 use problems::travelling_salesman::{
     TSPValue,
     TSPRandomSolution,
     TSPInstance};
-use crate::problems::travelling_salesman::{TSPFeatureMapper, SimpleTSPInstanceGenerator};
-use std::rc::Rc;
-use crate::organism::Genome;
-use crate::problems::{DiscreteHyperparameters, ContinuousHyperparameters, SpatialMapper};
+
+use organism::grid::Grid;
+use organism::Genome;
+use organism::organism::Organism;
+use organism::organism::OrganismGenerator;
+
+use algorithm::selection::Elitism;
+use algorithm::algorithm::ReplacementSelection;
+use algorithm::selection::MetropolisHastings;
+use algorithm::selection::GreedySelection;
+use algorithm::simple::SimpleReplacement;
+
+use rand::{thread_rng, Rng};
+
+use features::FeatureMapper;
+use std::hash::Hash;
+use crate::algorithm::algorithm::UpdatableSolver;
+
 
 #[derive(Clone)]
 struct Iteration {
@@ -71,17 +76,23 @@ trait Config {
 
 
 trait AlgorithmExec<V,P,F,H> {
-//    fn initialize_grid(&mut self);
-    fn exec(&self, config: Rc<ProblemState<V,P,F,H>>) -> Box<dyn Iterator<Item=Iteration>>;
+    fn exec(&self, config: Rc<MyConfigIt<V,P,F,H>>) -> Box<dyn Iterator<Item=Iteration>>;
 }
 
 
 
 #[derive(Clone)]
-struct AlgoConfig<V,P,F,TF,H> {
+struct AlgoConfig<V,P,F,H> {
     elitism: Rc<dyn Elitism>,
-    replacement_selection: Rc<dyn ReplacementSelection<V,F,P,H,TF>>
+    replacement_selection: Rc<dyn ReplacementSelection<V,F,P,H>>
 }
+
+impl<V,P,F,H> AlgorithmExec<V,P,F,H> for AlgoConfig<V,P,F,H> {
+    fn exec(&self, config: Rc<MyConfigIt<V,P,F,H>>) -> Box<dyn Iterator<Item=Iteration>> {
+        unimplemented!()
+    }
+}
+
 
 #[derive(Copy, Clone)]
 struct CommonParameters {
@@ -110,37 +121,6 @@ struct ProblemConfig<V,P,F,H> {
     hyperparameter_mapper: Rc<dyn Environment<H>>
 }
 
-/*
-#[derive(Clone)]
-struct AllConfig<V,P,F,H> {
-    algorithm_configs: Rc<AlgoConfig<V,P,F>>,
-    problem_config: Rc<ProblemConfig<V,P,F,H>>,
-    common_config: Rc<CommonParameters>,
-}
-*/
-
-
-impl<V: Genome<H=H,P=P>,P,F,TF,H> AlgorithmExec<V,P,F,H> for AlgoConfig<V,P,F,TF,H> {
-    fn exec(&self, config: Rc<ProblemState<V,P,F,H>>) -> Box<dyn Iterator<Item=Iteration>> {
-
-        /*
-        let gr = self.replacement_selection.initialize_grid();
-
-        Box::new(AlgorithmState {
-            problem_state: Rc::new(unimplemented!()),
-            grid: unimplemented!(),
-            i: 0
-        });
-        */
-        return Box::new(AlgorithmState {
-            problem_state: config.clone(),
-            grid: self.replacement_selection.initialize_grid(5,
-                         config.problem_config.feature_mapper.as_ref(),
-                 &config.instance, config.problem_config.random_organism_generator.as_ref()),
-            i: 0
-        });
-    }
-}
 
 
 struct MyConfig<V,P,F,H> {
@@ -161,10 +141,22 @@ impl<V,P,F,H> Clone for MyConfig<V,P,F,H> {
 
 struct MyConfigIt<V,P,F,H> {
     my_config: Rc<MyConfig<V,P,F,H>>,
-    instance: P,
+    instance: Rc<P>,
     repetitions: u64,
     index_algo: usize
 }
+
+impl<V,P,F,H> Clone for MyConfigIt<V,P,F,H> {
+    fn clone(&self) -> Self {
+        MyConfigIt {
+            my_config: self.my_config.clone(),
+            instance: self.instance.clone(),
+            repetitions: self.repetitions,
+            index_algo: self.index_algo
+        }
+    }
+}
+
 
 impl<V,P,F,H> Iterator for MyConfigIt<V,P,F,H> {
     type Item = Box<dyn Iterator<Item=Iteration>>;
@@ -178,11 +170,12 @@ impl<V,P,F,H> Iterator for MyConfigIt<V,P,F,H> {
             if self.index_algo >= self.my_config.algorithms.len() {
                 self.index_algo = 0;
                 self.repetitions += 1;
-                self.instance = self.my_config.problem_config.problem_instance_generator.generate_problem();
+                self.instance = Rc::new(self.my_config.problem_config.problem_instance_generator.generate_problem());
             }
             else {
                 let algo = self.my_config.algorithms.get(self.index_algo).unwrap();
-                return Some(algo.exec(&self.instance));
+
+                return Some(algo.exec(Rc::new(self.clone())));
             }
         }
 
@@ -199,7 +192,7 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
     fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>> {
         Box::new(MyConfigIt{
             my_config: Rc::new(self.clone()),
-            instance: self.problem_config.problem_instance_generator.generate_problem(),
+            instance: Rc::new(self.problem_config.problem_instance_generator.generate_problem()),
             repetitions: 0,
             index_algo: 0
         })
@@ -210,14 +203,14 @@ struct ProblemState<V,P,F,H> {
     problem_config: Rc<ProblemConfig<V,P,F,H>>,
     common_config: Rc<CommonParameters>,
     algorithms: Vec<Rc<dyn AlgorithmExec<V,P,F,H>>>,
-    instance: P,
+    instance: Rc<P>,
     repetitions: u64
 }
 
 
 struct AlgorithmState<V,P,F,H> {
     problem_state: Rc<ProblemState<V,P,F,H>>,
-    grid: Grid<V,F>,
+    updatable_solver: Box<dyn UpdatableSolver<V>>,
     i: u64
 }
 
@@ -237,7 +230,7 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 
 
 
-fn simple_metropolis_ga<V,P,F,H: Copy + 'static>(hyperparameters: H) -> Rc<AlgoConfig<V,P,F,(),H>> where V: Genome<H=H,P=P> {
+fn simple_metropolis_ga<V,P,F,H: Copy + 'static>() -> Rc<AlgoConfig<V,P,F,H>> where V: Genome<H=H,P=P> {
     return Rc::new(AlgoConfig {
         elitism: Rc::new(MetropolisHastings{}),
         replacement_selection: Rc::new(SimpleReplacement{})
@@ -270,7 +263,7 @@ fn main() {
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
-        algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>(DiscreteHyperparameters{mutation_chance: 0.2})]
+        algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>()]
     })];
 
     for mut config in configs {
