@@ -56,8 +56,9 @@ impl<V: Clone,P,F,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,F,H> {
         let mut rng = thread_rng();
         let index_a = rng.gen_range(0,size);
         let mut index_b = rng.gen_range(0, size);
+
         while index_b == index_a {
-            let mut index_b = rng.gen_range(0, size);
+            index_b = rng.gen_range(0, size);
         }
 
         let mut score_a;

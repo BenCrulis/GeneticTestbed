@@ -6,7 +6,7 @@ extern crate rand;
 extern crate serde;
 
 use std::vec::Vec;
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 
 mod common;
 mod problems;
@@ -58,7 +58,7 @@ use crate::algorithm::mutation::Mutator;
 use crate::problems::travelling_salesman::{TSPMutator, TSPScorer};
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Iteration {
     iteration: u64,
     repetition: u64,
@@ -87,13 +87,7 @@ trait AlgorithmExec<V,P,F,H> {
 #[derive(Clone)]
 struct AlgoConfig<V,P,F,H> {
     elitism: Rc<dyn Elitism>,
-    replacement_selection: Rc<dyn ReplacementSelection<V,F,P,H>>
-}
-
-impl<V,P,F,H> AlgorithmExec<V,P,F,H> for AlgoConfig<V,P,F,H> {
-    fn exec(&self, config: Rc<MyConfigIt<V,P,F,H>>) -> Box<dyn Iterator<Item=Iteration>> {
-        unimplemented!()
-    }
+    replacement_selection: Rc<dyn ReplacementSelection<V,P,F,H>>
 }
 
 
@@ -122,7 +116,7 @@ impl Parametrized for CommonParameters {
 struct MyConfig<V,P,F,H> {
     problem_config: Rc<ProblemConfig<V,P,F,H>>,
     common_config: Rc<CommonParameters>,
-    algorithms: Vec<Rc<dyn AlgorithmExec<V,P,F,H>>>,
+    algorithms: Vec<Rc<AlgoConfig<V,P,F,H>>>,
 }
 impl<V,P,F,H> Clone for MyConfig<V,P,F,H> {
     fn clone(&self) -> Self {
@@ -154,34 +148,47 @@ impl<V,P,F,H> Clone for MyConfigIt<V,P,F,H> {
 }
 
 
-impl<V,P,F,H> Iterator for MyConfigIt<V,P,F,H> {
+impl<V: 'static,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,H> {
     type Item = Box<dyn Iterator<Item=Iteration>>;
 
     fn next(&mut self) -> Option<Self::Item> {
 
-        if self.repetitions > self.my_config.common_config.number_of_repetitions {
-            return None;
+        if self.index_algo >= self.my_config.algorithms.len()-1 {
+            self.index_algo = 0;
+            self.repetitions += 1;
+            if self.repetitions > self.my_config.common_config.number_of_repetitions {
+                return None;
+            }
+            self.instance = Rc::new(self.my_config.problem_config.problem_instance_generator.generate_problem());
         }
         else {
-            if self.index_algo >= self.my_config.algorithms.len() {
-                self.index_algo = 0;
-                self.repetitions += 1;
-                self.instance = Rc::new(self.my_config.problem_config.problem_instance_generator.generate_problem());
-            }
-            else {
-                let algo = self.my_config.algorithms.get(self.index_algo).unwrap();
-
-                return Some(algo.exec(Rc::new(self.clone())));
-            }
+            self.index_algo += 1;
         }
 
-        return None;
+        let algo = self.my_config.algorithms.get(self.index_algo).unwrap();
+
+        let updatable_solver = algo.replacement_selection.initialize_solver(
+            self.my_config.common_config.population_size,
+            self.instance.clone(),
+            algo.elitism.clone(),
+            self.my_config.problem_config.clone()
+        );
+        println!("Finished initializing solver.");
+
+        let ex = AlgorithmState {
+            my_config_it: Rc::new(self.clone()),
+            updatable_solver,
+            i: 0
+        };
+
+        return Some(Box::new(ex));
     }
 }
 
 impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
     fn get_problem_config_parameters(&self) -> ParameterConfig {
         // TODO
+        println!("Getting MyConfig parameters");
         return self.common_config.parameters()
     }
 
@@ -205,7 +212,7 @@ struct ProblemState<V,P,F,H> {
 
 
 struct AlgorithmState<V,P,F,H> {
-    problem_state: Rc<ProblemState<V,P,F,H>>,
+    my_config_it: Rc<MyConfigIt<V,P,F,H>>,
     updatable_solver: Box<dyn UpdatableSolver<V>>,
     i: u64
 }
@@ -214,13 +221,26 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
     type Item = Iteration;
 
     fn next(&mut self) -> Option<Self::Item> {
-
-        if self.i >= self.problem_state.common_config.number_of_iterations {
+        if self.i >= self.my_config_it.my_config.common_config.number_of_iterations {
+            None
+        }
+        else {
+            let organisms = self.updatable_solver.update();
+            let mut iter = Iteration {
+                iteration: self.i,
+                repetition: self.my_config_it.repetitions,
+                timestamp: Instant::now(),
+                best_score: 0.0,
+                sum_scores: 0.0,
+                min_score: 0.0,
+                max_score: 0.0,
+                number_of_organisms: organisms.len(),
+                pop_score_variance: 0.0
+            };
 
             self.i += 1;
+            Some(iter)
         }
-
-        unimplemented!()
     }
 }
 
@@ -255,9 +275,6 @@ fn main() {
         number_of_iterations: 10
     };
 
-    let target_population_size = 100_usize;
-
-
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
@@ -266,8 +283,10 @@ fn main() {
 
     for mut config in configs {
         let p_params = config.get_problem_config_parameters();
+        println!("Config: {:?}", p_params);
         for it in config.execute() {
-            for it2 in it {
+            for iteration in it {
+                println!("Repetition: {:?}", iteration);
 
             }
         }

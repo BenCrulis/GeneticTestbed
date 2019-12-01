@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use ordered_float::OrderedFloat;
 
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Debug)]
 pub enum Parameter {
     Integer(i64),
     Decimal(OrderedFloat<f64>),
