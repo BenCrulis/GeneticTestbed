@@ -10,7 +10,7 @@ use crate::scoring::Scorer;
 use crate::algorithm::config::ProblemConfig;
 
 
-pub trait ReplacementSelection<V,P,F,H>: Named {
+pub trait ReplacementSelection<V,P,F,H>: Named + Parametrized {
     fn initialize_solver(
         &self,
         pop_size: usize,

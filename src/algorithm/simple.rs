@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::common::Named;
+use crate::common::{Named, Parametrized, str_param};
 use crate::algorithm::algorithm::{ReplacementSelection, UpdatableSolver};
 use crate::organism::{OrganismGenerator, Organism};
 use crate::features::FeatureMapper;
@@ -10,6 +10,7 @@ use crate::algorithm::selection::Elitism;
 use crate::problems::Environment;
 use crate::scoring::Scorer;
 use crate::algorithm::config::ProblemConfig;
+use serde_json::{Map, Value};
 
 #[derive(Copy, Clone)]
 pub struct SimpleReplacement {}
@@ -24,6 +25,17 @@ struct SimpleReplacementExec<V,P,F,H> {
 impl Named for SimpleReplacement {
     fn name(&self) -> String {
         String::from("SimpleReplacement")
+    }
+}
+
+impl Parametrized for SimpleReplacement {
+    fn parameters(&self) -> Value {
+        let mut config = Map::new();
+        config.insert("use spatial grid".to_string(), false.into());
+        config.insert("use spatial hyperparameters".to_string(), false.into());
+        config.insert("use features".to_string(), false.into());
+
+        return Value::Object(config);
     }
 }
 

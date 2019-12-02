@@ -11,7 +11,7 @@ extern crate statistical;
 use std::vec::Vec;
 use std::time::{Instant, SystemTime};
 
-use serde_json::{json,Map};
+use serde_json::{json, Map, Value};
 
 mod common;
 mod problems;
@@ -68,6 +68,7 @@ use serde_json::Result;
 struct Iteration {
     iteration: u64,
     repetition: u64,
+    index_algo: usize,
     timestamp: Instant,
     sum_scores: f64,
     min_score: f64,
@@ -159,19 +160,6 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,
     type Item = Box<dyn Iterator<Item=Iteration>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-
-        if self.index_algo >= self.my_config.algorithms.len()-1 {
-            self.index_algo = 0;
-            self.repetitions += 1;
-            if self.repetitions > self.my_config.common_config.number_of_repetitions {
-                return None;
-            }
-            self.instance = Rc::new(self.my_config.problem_config.problem_instance_generator.generate_problem());
-        }
-        else {
-            self.index_algo += 1;
-        }
-
         let algo = self.my_config.algorithms.get(self.index_algo).unwrap();
 
         let updatable_solver = algo.replacement_selection.initialize_solver(
@@ -187,6 +175,20 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,
             i: 0
         };
 
+        if self.index_algo >= self.my_config.algorithms.len()-1 {
+            self.index_algo = 0;
+            if self.repetitions > self.my_config.common_config.number_of_repetitions {
+                return None;
+            }
+            else {
+                self.repetitions += 1;
+            }
+            self.instance = Rc::new(self.my_config.problem_config.problem_instance_generator.generate_problem());
+        }
+        else {
+            self.index_algo += 1;
+        }
+
         return Some(Box::new(ex));
     }
 }
@@ -195,7 +197,23 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
     fn get_problem_config_parameters(&self) -> serde_json::Value {
         // TODO
         println!("Getting MyConfig parameters");
-        return self.common_config.parameters()
+        let common_params = self.common_config.parameters();
+        let mut algo_configs = Vec::new();
+
+        for (i,algo) in self.algorithms.iter().enumerate() {
+            let mut algo_config = Map::new();
+            algo_config.insert("algorithm index".to_string(), int_param(i as i64));
+            algo_config.insert("elitism".to_string(), serde_json::Value::String(algo.elitism.name()));
+            algo_config.insert("algorithm config".to_string(), algo.replacement_selection.parameters());
+            algo_configs.push(serde_json::Value::Object(algo_config));
+        }
+
+        let mut final_config = Map::new();
+
+        final_config.insert("common".to_string(), common_params);
+        final_config.insert("algorithms".to_string(), serde_json::Value::Array(algo_configs));
+
+        return serde_json::Value::Object(final_config);
     }
 
     fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>> {
@@ -243,10 +261,10 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
             //println!("Scores: {:?}", &sorted_score);
 
             let mean_val = mean(sorted_score.as_slice());
-
             let mut iter = Iteration {
                 iteration: self.i,
                 repetition: self.my_config_it.repetitions,
+                index_algo: self.my_config_it.index_algo,
                 timestamp: Instant::now(),
                 sum_scores: sorted_score.iter().sum(),
                 min_score: *sorted_score.last().unwrap(),
@@ -297,7 +315,8 @@ fn main() {
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
-        algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>()]
+        algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>(),
+                         simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>()]
     })];
 
     for mut config in configs {
