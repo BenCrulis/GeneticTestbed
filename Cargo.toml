@@ -5,6 +5,9 @@ authors = ["ben <bencrulis@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+csv = "1.1.1"
 ordered-float = "*"
 rand = "*"
 serde = "*"
+serde_json = "1.0.42"
+statistical = "1.0.0"

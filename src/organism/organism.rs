@@ -17,7 +17,15 @@ impl<T> Organism<T> {
         self.score = None;
     }
 
-    pub fn score_with_cache<P>(&mut self, scorer: Rc<dyn Scorer<T,P>>, problem: &P) -> f64 {
+    pub fn get_score(&self) -> Option<f64> {
+        self.score
+    }
+
+    pub fn only_score<P>(&self, scorer: &dyn Scorer<T,P>, problem: &P) -> f64 {
+        scorer.score(&self.genotype, problem)
+    }
+
+    pub fn score_with_cache<P>(&mut self, scorer: &dyn Scorer<T,P>, problem: &P) -> f64 {
         match self.score {
             None => {
                 let s = scorer.score(&self.genotype, problem);

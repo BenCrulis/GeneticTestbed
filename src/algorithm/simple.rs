@@ -65,7 +65,7 @@ impl<V: Clone,P,F,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,F,H> {
 
         {
             let org_a= self.organisms.get_mut(index_a).unwrap();
-            score_a = org_a.score_with_cache(scorer.clone(), self.problem.as_ref());
+            score_a = org_a.score_with_cache(scorer.as_ref(), self.problem.as_ref());
 
         }
 
@@ -73,7 +73,7 @@ impl<V: Clone,P,F,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,F,H> {
 
         {
             let org_b = self.organisms.get_mut(index_b).unwrap();
-            score_b = org_b.score_with_cache(scorer.clone(), self.problem.as_ref());
+            score_b = org_b.score_with_cache(scorer.as_ref(), self.problem.as_ref());
         }
 
         let keep_first = self.elitism.choose(score_a, score_b);

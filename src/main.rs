@@ -3,10 +3,15 @@
 #![allow(unreachable_code)]
 
 extern crate rand;
+extern crate csv;
 extern crate serde;
+extern crate serde_json;
+extern crate statistical;
 
 use std::vec::Vec;
 use std::time::{Instant, SystemTime};
+
+use serde_json::{json};
 
 mod common;
 mod problems;
@@ -47,6 +52,7 @@ use algorithm::algorithm::ReplacementSelection;
 use algorithm::selection::MetropolisHastings;
 use algorithm::selection::GreedySelection;
 use algorithm::simple::SimpleReplacement;
+use algorithm::util::sorted_scores;
 
 use rand::{thread_rng, Rng};
 
@@ -56,17 +62,20 @@ use crate::algorithm::algorithm::UpdatableSolver;
 use crate::scoring::Scorer;
 use crate::algorithm::mutation::Mutator;
 use crate::problems::travelling_salesman::{TSPMutator, TSPScorer};
-
+use statistical::*;
+use serde::{Serialize,Deserialize};
+use serde_json::Result;
 
 #[derive(Clone, Debug)]
 struct Iteration {
     iteration: u64,
     repetition: u64,
     timestamp: Instant,
-    best_score: f64,
     sum_scores: f64,
     min_score: f64,
     max_score: f64,
+    mean_score: f64,
+    median_score: f64,
     number_of_organisms: usize,
     pop_score_variance: f64,
 }
@@ -226,16 +235,29 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
         }
         else {
             let organisms = self.updatable_solver.update();
+
+            let number_of_organisms = organisms.len();
+
+            let sorted_score = sorted_scores(
+                organisms,
+                self.my_config_it.my_config.problem_config.scorer.as_ref(),
+                self.my_config_it.instance.as_ref());
+
+            //println!("Scores: {:?}", &sorted_score);
+
+            let mean_val = mean(sorted_score.as_slice());
+
             let mut iter = Iteration {
                 iteration: self.i,
                 repetition: self.my_config_it.repetitions,
                 timestamp: Instant::now(),
-                best_score: 0.0,
-                sum_scores: 0.0,
-                min_score: 0.0,
-                max_score: 0.0,
-                number_of_organisms: organisms.len(),
-                pop_score_variance: 0.0
+                sum_scores: sorted_score.iter().sum(),
+                min_score: *sorted_score.last().unwrap(),
+                max_score: *sorted_score.first().unwrap(),
+                mean_score: mean_val,
+                median_score: median(sorted_score.as_slice()),
+                number_of_organisms,
+                pop_score_variance: variance(sorted_score.as_slice(), Some(mean_val))
             };
 
             self.i += 1;
@@ -286,6 +308,7 @@ fn main() {
         println!("Config: {:?}", p_params);
         for it in config.execute() {
             for iteration in it {
+
                 println!("Repetition: {:?}", iteration);
 
             }
