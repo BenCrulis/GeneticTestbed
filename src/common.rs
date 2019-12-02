@@ -1,28 +1,17 @@
 use std::collections::HashMap;
 use ordered_float::OrderedFloat;
+use serde_json::{Value, Number, Map};
 
-
-#[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Debug)]
-pub enum Parameter {
-    Integer(i64),
-    Decimal(OrderedFloat<f64>),
-    String(String)
+pub fn decimal_param(val: f64) -> Value {
+    return Value::Number(serde_json::Number::from_f64(val).unwrap());
 }
 
-pub type ParameterConfig = HashMap<String,Parameter>;
-
-pub fn decimal_param(val: f64) -> Parameter {
-    return Parameter::Decimal(OrderedFloat::from(val));
+pub fn str_param(str: &str) -> Value {
+    Value::String(str.to_string())
 }
 
-pub fn str_param(str: &str) -> Parameter {
-    Parameter::String(String::from(str))
-}
-
-pub fn update_parameters(param1: ParameterConfig, param2: ParameterConfig) -> ParameterConfig {
-    let mut hm = param1.clone();
-    hm.extend(param2);
-    return hm;
+pub fn int_param(int: i64) -> Value {
+    return Value::Number(int.into())
 }
 
 pub trait Named {
@@ -30,7 +19,7 @@ pub trait Named {
 }
 
 pub trait Parametrized {
-    fn parameters(&self) -> HashMap<String, Parameter> {
-        return HashMap::new();
+    fn parameters(&self) -> Value {
+        return Value::Object(Map::new());
     }
 }

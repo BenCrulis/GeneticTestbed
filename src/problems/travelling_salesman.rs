@@ -18,6 +18,7 @@ use crate::problems::DiscreteHyperparameters;
 use std::rc::Rc;
 use crate::scoring::Scorer;
 use crate::algorithm::mutation::Mutator;
+use serde_json::{Value, Map};
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash)]
 pub struct TSPValue<T> {
@@ -84,10 +85,10 @@ impl Named for TSPFeatureMapper {
 }
 
 impl Parametrized for TSPFeatureMapper {
-    fn parameters(&self) -> HashMap<String,Parameter> {
-        let mut params = HashMap::new();
-        params.insert(String::from("number_of_cities_mapped"), Parameter::Integer(self.number_cities_mapped as i64));
-        return params;
+    fn parameters(&self) -> Value {
+        let mut params = Map::new();
+        params.insert("number_of_cities_mapped".to_string(), int_param(self.number_cities_mapped as i64));
+        return Value::Object(params);
     }
 }
 
@@ -165,11 +166,11 @@ impl Named for SimpleTSPInstanceGenerator {
 }
 
 impl Parametrized for SimpleTSPInstanceGenerator {
-    fn parameters(&self) -> HashMap<String,Parameter> {
-        let mut hm = HashMap::new();
+    fn parameters(&self) -> Value {
+        let mut hm = Map::new();
         hm.insert("number_of_cities_generated".to_string(),
-                  Parameter::Integer(self.number_of_cities as i64));
-        return hm;
+                  int_param(self.number_of_cities as i64));
+        return Value::Object(hm);
     }
 }
 

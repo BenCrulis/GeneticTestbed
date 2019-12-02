@@ -11,7 +11,7 @@ extern crate statistical;
 use std::vec::Vec;
 use std::time::{Instant, SystemTime};
 
-use serde_json::{json};
+use serde_json::{json,Map};
 
 mod common;
 mod problems;
@@ -23,14 +23,12 @@ mod scoring;
 use std::collections::HashMap;
 use std::process::Output;
 use std::collections::hash_map::RandomState;
-use std::iter::Cycle;
+use std::iter::{Cycle};
 use std::rc::Rc;
 
 use common::Named;
 use common::Parametrized;
-use common::Parameter;
-use common::ParameterConfig;
-use common::str_param;
+use common::{str_param,int_param};
 
 use problems::rastrigin::{rastrigin,custom_rastrigin,regularized_rastrigin};
 use problems::ProblemInstanceGenerator;
@@ -82,7 +80,7 @@ struct Iteration {
 
 
 trait Config {
-    fn get_problem_config_parameters(&self) -> ParameterConfig;
+    fn get_problem_config_parameters(&self) -> serde_json::Value;
     fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>>;
 }
 
@@ -108,12 +106,12 @@ struct CommonParameters {
 }
 
 impl Parametrized for CommonParameters {
-    fn parameters(&self) -> HashMap<String, Parameter, RandomState> {
-        let mut hm = HashMap::new();
-        hm.insert("population size".to_string(),Parameter::Integer(self.population_size as i64));
-        hm.insert("total repetitions".to_string(), Parameter::Integer(self.number_of_repetitions as i64));
-        hm.insert("iterations per run".to_string(), Parameter::Integer(self.number_of_iterations as i64));
-        return hm;
+    fn parameters(&self) -> serde_json::Value {
+        let mut hm = Map::new();
+        hm.insert("population size".to_string(),int_param(self.population_size as i64));
+        hm.insert("total repetitions".to_string(), int_param(self.number_of_repetitions as i64));
+        hm.insert("iterations per run".to_string(), int_param(self.number_of_iterations as i64));
+        return serde_json::Value::Object(hm);
     }
 }
 
@@ -182,7 +180,6 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,
             algo.elitism.clone(),
             self.my_config.problem_config.clone()
         );
-        println!("Finished initializing solver.");
 
         let ex = AlgorithmState {
             my_config_it: Rc::new(self.clone()),
@@ -195,7 +192,7 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,
 }
 
 impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
-    fn get_problem_config_parameters(&self) -> ParameterConfig {
+    fn get_problem_config_parameters(&self) -> serde_json::Value {
         // TODO
         println!("Getting MyConfig parameters");
         return self.common_config.parameters()
