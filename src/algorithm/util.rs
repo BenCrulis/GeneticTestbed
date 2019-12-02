@@ -11,6 +11,46 @@ pub fn sorted_scores<V,P>(mut organisms: Vec<Organism<V>>, scorer: &dyn Scorer<V
 }
 
 
+struct Coordinates {
+    coords: Vec<(usize,usize)>
+}
+
+impl Coordinates {
+    pub fn new(coordinates: Vec<(usize,usize)>) -> Option<Self> {
+        for (v,m) in &coordinates {
+            if v >= m {
+                return None;
+            }
+        }
+
+        return Some(Coordinates {
+            coords: coordinates
+        });
+    }
+
+    pub fn get_only_coords(&self) -> Vec<usize> {
+        return self.coords.iter().map(|x| x.0).collect();
+    }
+
+    pub fn get_coords_slice(&self) -> &[(usize,usize)] {
+        return self.coords.as_slice();
+    }
+
+    pub fn flatten_coords(&self) -> usize {
+        let mut i = 0;
+
+        //TODO must finish
+        for (v,max) in &self.coords {
+
+        }
+
+
+        return i;
+    }
+}
+
+
+
 
 
 

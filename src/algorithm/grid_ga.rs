@@ -9,6 +9,7 @@ use std::hash::Hash;
 use crate::organism::Organism;
 use crate::problems::Hyperparameter;
 use std::collections::HashMap;
+use rand::thread_rng;
 
 #[derive(Copy, Clone)]
 struct GeneralizedMAPElite {
@@ -90,6 +91,9 @@ impl<V: Clone + 'static,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparame
 
 impl<V,P,F,H> UpdatableSolver<V> for GeneralizedMAPEliteExec<V,P,F,H> {
     fn update(&mut self) -> Vec<Organism<V>> {
+        let mut rng = thread_rng();
+
+
         unimplemented!()
     }
 }
