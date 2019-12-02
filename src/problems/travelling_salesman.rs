@@ -104,12 +104,21 @@ impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>,TSPInstance<T>> for
         return r;
     }
 
-    fn project(&self, genome: TSPValue<T>) -> Vec<T> {
+    fn project(&self, genome: &TSPValue<T>) -> Vec<T> {
         genome.permutation[..self.number_cities_mapped].to_vec()
     }
 
     fn default_features(&self) -> Vec<T> {
         Vec::new()
+    }
+
+    fn possible_feature_values(&self, problem: &TSPInstance<T>) -> usize {
+        let mut values = 1;
+        for i in ((problem.number_of_cities-self.number_cities_mapped)..=problem.number_of_cities).rev() {
+            values *= i;
+        }
+
+        return values;
     }
 }
 
@@ -144,7 +153,7 @@ impl Named for TSPRandomSolution {
 impl Parametrized for TSPRandomSolution {}
 
 impl OrganismGenerator<TSPValue<usize>,TSPInstance<usize>> for TSPRandomSolution {
-    fn generate(&self, problem: Rc<TSPInstance<usize>>) -> TSPValue<usize> {
+    fn generate(&self, problem: &TSPInstance<usize>) -> TSPValue<usize> {
         let mut v: Vec<usize> = (0..problem.number_of_cities).collect();
         let mut rng = thread_rng();
 

@@ -39,8 +39,8 @@ impl<T> Organism<T> {
 
 
 pub trait OrganismGenerator<V,P>: Named + Parametrized {
-    fn generate(&self, problem: Rc<P>) -> V;
-    fn generate_organism(&self, problem: Rc<P>) -> Organism<V> {
+    fn generate(&self, problem: &P) -> V;
+    fn generate_organism(&self, problem: &P) -> Organism<V> {
         return Organism{genotype: self.generate(problem),
                         score: Option::None}
     }

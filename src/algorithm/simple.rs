@@ -49,7 +49,7 @@ impl<V: Clone + 'static,P: 'static,F: 'static,H: Clone + 'static> ReplacementSel
 
         let mut gr = vec![];
         for i in 0..pop_size {
-            gr.push(generator.generate_organism(problem.clone()));
+            gr.push(generator.generate_organism(problem.as_ref()));
         }
         return Box::new(SimpleReplacementExec {
             problem: problem.clone(),

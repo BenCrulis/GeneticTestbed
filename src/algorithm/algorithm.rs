@@ -26,17 +26,3 @@ pub trait UpdatableSolver<V> {
 }
 
 
-
-struct GeneralizedMAPElite {
-    use_features: bool,
-    use_hyperparameter_mapping: bool,
-    number_of_spatial_dimensions: usize
-}
-
-impl Named for GeneralizedMAPElite {
-    fn name(&self) -> String {
-        String::from("Generalized MAP Elite algorithm")
-    }
-}
-
-
