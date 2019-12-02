@@ -116,6 +116,8 @@ impl Iteration {
 
 trait Config {
     fn get_problem_config_parameters(&self) -> serde_json::Value;
+    fn get_common_config(&self) -> CommonParameters;
+    fn number_of_algorithms(&self) -> usize;
     fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>>;
 }
 
@@ -209,7 +211,7 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,
             i: 0
         };
 
-        if  self.repetitions > self.my_config.common_config.number_of_repetitions {
+        if self.repetitions >= self.my_config.common_config.number_of_repetitions {
             return None;
         }
         else {
@@ -247,6 +249,14 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
         final_config.insert("algorithms".to_string(), serde_json::Value::Array(algo_configs));
 
         return serde_json::Value::Object(final_config);
+    }
+
+    fn get_common_config(&self) -> CommonParameters {
+        *self.common_config
+    }
+
+    fn number_of_algorithms(&self) -> usize {
+        self.algorithms.len()
     }
 
     fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>> {
@@ -300,7 +310,7 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
             let mean_val = mean(sorted_score.as_slice());
             let mut iter = Iteration {
                 iteration: self.i,
-                repetition: self.my_config_it.repetitions,
+                repetition: self.my_config_it.repetitions+1,
                 index_algo: self.my_config_it.index_algo,
                 duration,
                 sum_scores: sorted_score.iter().sum(),
@@ -356,6 +366,15 @@ fn main() {
                          simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>()]
     })];
 
+    let mut total_number_repetitions = 0;
+
+    for conf in &configs {
+        let common_conf = conf.get_common_config();
+        total_number_repetitions = common_config.number_of_repetitions*conf.number_of_algorithms() as u64;
+    }
+
+    println!("Computing {} runs", total_number_repetitions);
+
     for (config_index, mut config) in configs.iter().enumerate() {
         let p_params = config.get_problem_config_parameters();
         println!("Config n°{}:\n{:?}", config_index ,p_params);
@@ -369,11 +388,14 @@ fn main() {
 
         let mut csv_writer = csv::Writer::from_writer(writer);
         Iteration::write_header(&mut csv_writer);
+        let mut i = 1;
         for it in config.execute() {
+            println!("Repetition: {}/{}", i, total_number_repetitions);
             for iteration in it {
-                println!("Repetition: {:?}", iteration);
                 iteration.write_row(&mut csv_writer)
             }
+
+            i += 1;
         }
     }
 }
