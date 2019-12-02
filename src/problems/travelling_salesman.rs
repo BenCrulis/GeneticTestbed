@@ -106,6 +106,10 @@ impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>,TSPInstance<T>> for
     fn project(&self, genome: TSPValue<T>) -> Vec<T> {
         genome.permutation[..self.number_cities_mapped].to_vec()
     }
+
+    fn default_features(&self) -> Vec<T> {
+        Vec::new()
+    }
 }
 
 
