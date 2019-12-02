@@ -9,7 +9,7 @@ extern crate serde_json;
 extern crate statistical;
 
 use std::vec::Vec;
-use std::time::{Instant, SystemTime};
+use std::time::{Instant, SystemTime, Duration};
 
 use serde_json::{json, Map, Value};
 
@@ -61,15 +61,17 @@ use crate::scoring::Scorer;
 use crate::algorithm::mutation::Mutator;
 use crate::problems::travelling_salesman::{TSPMutator, TSPScorer};
 use statistical::*;
-use serde::{Serialize,Deserialize};
-use serde_json::Result;
+use serde::{Serialize, Deserialize, Serializer};
+use std::fs::File;
+use std::path::Path;
+use std::io::{BufWriter, LineWriter, Write};
 
 #[derive(Clone, Debug)]
 struct Iteration {
     iteration: u64,
     repetition: u64,
     index_algo: usize,
-    timestamp: Instant,
+    duration: Duration,
     sum_scores: f64,
     min_score: f64,
     max_score: f64,
@@ -79,6 +81,38 @@ struct Iteration {
     pop_score_variance: f64,
 }
 
+impl Iteration {
+    fn write_header(writer: &mut csv::Writer<File>) {
+        writer.write_record(&[
+            "repetition",
+            "algorithm index",
+            "iteration",
+            "duration (ns)",
+            "sum score",
+            "min score",
+            "max score",
+            "mean score",
+            "median score",
+            "number of organisms",
+            "variance"
+        ]);
+    }
+    fn write_row(&self, writer: &mut csv::Writer<File>) {
+        writer.write_record(&[
+            self.repetition.to_string(),
+            self.index_algo.to_string(),
+            self.iteration.to_string(),
+            self.duration.as_nanos().to_string(),
+            self.sum_scores.to_string(),
+            self.min_score.to_string(),
+            self.max_score.to_string(),
+            self.mean_score.to_string(),
+            self.median_score.to_string(),
+            self.number_of_organisms.to_string(),
+            self.pop_score_variance.to_string()
+        ]);
+    }
+}
 
 trait Config {
     fn get_problem_config_parameters(&self) -> serde_json::Value;
@@ -248,7 +282,11 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
             None
         }
         else {
+            let before = Instant::now();
+
             let organisms = self.updatable_solver.update();
+
+            let duration = Instant::now().duration_since(before);
 
             let number_of_organisms = organisms.len();
 
@@ -264,7 +302,7 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
                 iteration: self.i,
                 repetition: self.my_config_it.repetitions,
                 index_algo: self.my_config_it.index_algo,
-                timestamp: Instant::now(),
+                duration,
                 sum_scores: sorted_score.iter().sum(),
                 min_score: *sorted_score.last().unwrap(),
                 max_score: *sorted_score.first().unwrap(),
@@ -318,14 +356,23 @@ fn main() {
                          simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>()]
     })];
 
-    for mut config in configs {
+    for (config_index, mut config) in configs.iter().enumerate() {
         let p_params = config.get_problem_config_parameters();
-        println!("Config: {:?}", p_params);
+        println!("Config n°{}:\n{:?}", config_index ,p_params);
+        let mut file = std::fs::File::create(Path::new(format!("results_{}.csv", config_index).as_str()));
+        let mut writer = file.unwrap();
+
+        writer.write_all("\"".as_bytes());
+        writer.write_all(serde_json::from_value(p_params).unwrap().as_bytes());
+
+        writer.write_all("\"\n".as_bytes());
+
+        let mut csv_writer = csv::Writer::from_writer(writer);
+        Iteration::write_header(&mut csv_writer);
         for it in config.execute() {
             for iteration in it {
-
                 println!("Repetition: {:?}", iteration);
-
+                iteration.write_row(&mut csv_writer)
             }
         }
     }
