@@ -363,7 +363,7 @@ fn main() {
         let mut writer = file.unwrap();
 
         writer.write_all("\"".as_bytes());
-        writer.write_all(serde_json::from_value(p_params).unwrap().as_bytes());
+        writer.write_all(p_params.to_string().as_bytes());
 
         writer.write_all("\"\n".as_bytes());
 
