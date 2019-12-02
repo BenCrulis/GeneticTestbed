@@ -175,20 +175,19 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,
             i: 0
         };
 
-        if self.index_algo >= self.my_config.algorithms.len()-1 {
-            self.index_algo = 0;
-            if self.repetitions > self.my_config.common_config.number_of_repetitions {
-                return None;
-            }
-            else {
-                self.repetitions += 1;
-            }
-            self.instance = Rc::new(self.my_config.problem_config.problem_instance_generator.generate_problem());
+        if  self.repetitions > self.my_config.common_config.number_of_repetitions {
+            return None;
         }
         else {
-            self.index_algo += 1;
+            if self.index_algo >= self.my_config.algorithms.len()-1 {
+                self.index_algo = 0;
+                self.repetitions += 1;
+                self.instance = Rc::new(self.my_config.problem_config.problem_instance_generator.generate_problem());
+            }
+            else {
+                self.index_algo += 1;
+            }
         }
-
         return Some(Box::new(ex));
     }
 }
