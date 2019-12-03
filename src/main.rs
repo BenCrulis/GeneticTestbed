@@ -7,6 +7,7 @@ extern crate csv;
 extern crate serde;
 extern crate serde_json;
 extern crate statistical;
+extern crate chrono;
 
 use std::vec::Vec;
 use std::time::{Instant, SystemTime, Duration};
@@ -375,7 +376,7 @@ fn main() {
     let common_config = CommonParameters {
         population_size: 500,
         number_of_repetitions: 10,
-        number_of_iterations: 100
+        number_of_iterations: 1000
     };
 
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
@@ -394,6 +395,9 @@ fn main() {
 
     println!("Computing {} runs", total_number_repetitions);
 
+    let start_moment = chrono::Utc::now();
+    let mut i: u32 = 1;
+
     for (config_index, mut config) in configs.iter().enumerate() {
         let p_params = config.get_problem_config_parameters();
         println!("Config n°{}:\n{:?}", config_index ,p_params);
@@ -408,9 +412,15 @@ fn main() {
 
         let mut csv_writer = csv::Writer::from_writer(writer);
         Iteration::write_header(&mut csv_writer);
-        let mut i = 1;
         for it in config.execute() {
-            println!("Repetition: {}/{}", i, total_number_repetitions);
+            let now_moment = chrono::Utc::now();
+            let duration = now_moment.signed_duration_since(start_moment);
+            let speed = duration/i as i32;
+            let estimated_reamining_duration = speed*(total_number_repetitions-i as u64) as i32;
+            let estimated_end = now_moment+estimated_reamining_duration;
+            println!("Run {}/{}", i, total_number_repetitions);
+            println!("Estimated end: {}", estimated_end.to_string());
+
             for iteration in it {
                 iteration.write_row(&mut csv_writer)
             }

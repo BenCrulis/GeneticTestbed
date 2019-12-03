@@ -57,7 +57,7 @@ impl<V: Clone + 'static,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparame
             1
         };
 
-        println!("number of possibles features: {}", possibles_features);
+        //println!("number of possibles features: {}", possibles_features);
 
         assert!(pop_size > possibles_features); // required for fair comparison by maintaining same pop size between algos
 

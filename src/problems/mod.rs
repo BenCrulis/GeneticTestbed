@@ -80,6 +80,7 @@ impl Environment<DiscreteHyperparameters> for SpatialMapper {
     fn map_hyperparameters(&self, coordinates: &Vec<(usize, usize)>) -> DiscreteHyperparameters {
         let (val,max) = coordinates.get(0).unwrap();
         let prob: f64 = (val+1) as f64/((max+2) as f64);
+        //println!("prob: {}", &prob);
         return DiscreteHyperparameters{
             mutation_chance: prob
         };
