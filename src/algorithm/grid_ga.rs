@@ -165,10 +165,10 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
         self.problem_config.mutator.mutate(&mut org.genotype, &hyper);
 
         let new_feature = if self.algo_config.use_features {
-            self.problem_config.feature_mapper.default_features()
+            self.problem_config.feature_mapper.project(&org.genotype)
         }
         else {
-            self.problem_config.feature_mapper.project(&org.genotype)
+            self.problem_config.feature_mapper.default_features()
         };
 
         {
@@ -177,7 +177,7 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
             removed_org.insert(new_feature, org);
         }
 
-        println!("shape of cells: {:?}", self.organisms.cells.view().shape());
+        //println!("shape of cells: {:?}", self.organisms.cells.view().shape());
 
         self.organisms.cells.view().as_slice().unwrap().iter().flat_map(|hm: &HashMap<F, Organism<V>>| {
             hm.values().cloned().collect::<Vec<Organism<V>>>()
