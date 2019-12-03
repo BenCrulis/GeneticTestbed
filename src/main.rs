@@ -361,7 +361,7 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
         random_organism_generator: Rc::new(TSPRandomSolution{}),
         problem_instance_generator: Rc::new(SimpleTSPInstanceGenerator{ number_of_cities: 50 }),
         feature_mapper: Rc::new(TSPFeatureMapper{ number_cities_mapped: 1 }),
-        constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.2 },
+        constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.5 },
         hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 }),
         mutator: Rc::new(TSPMutator{}),
         scorer: Rc::new(TSPScorer{})
@@ -370,12 +370,12 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
 
 
 fn main() {
-    println!("Hello, world!");
+    let file_prefix = "test";
 
     let common_config = CommonParameters {
         population_size: 500,
         number_of_repetitions: 10,
-        number_of_iterations: 10
+        number_of_iterations: 100
     };
 
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
@@ -397,7 +397,8 @@ fn main() {
     for (config_index, mut config) in configs.iter().enumerate() {
         let p_params = config.get_problem_config_parameters();
         println!("Config n°{}:\n{:?}", config_index ,p_params);
-        let mut file = std::fs::File::create(Path::new(format!("results_{}.csv", config_index).as_str()));
+        let mut file = std::fs::File::create(
+            Path::new(format!("{}_results_{}.csv", file_prefix, config_index).as_str()));
         let mut writer = file.unwrap();
 
         writer.write_all("\"".as_bytes());

@@ -57,19 +57,18 @@ impl<V: Clone + 'static,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparame
             1
         };
 
-        println!("{}/{}", pop_size, possibles_features);
+        println!("number of possibles features: {}", possibles_features);
+
+        assert!(pop_size > possibles_features); // required for fair comparison by maintaining same pop size between algos
 
         let pop_per_cell = (pop_size/possibles_features);
 
-        println!("pop_per_cell={}", pop_per_cell);
 
         let num_dims = problem_config.hyperparameter_mapper.number_of_hyperparameters();
 
-        println!("num_dims={}", num_dims);
 
         let dim_size = (pop_per_cell as f64).powf(1.0/num_dims as f64) as usize;
 
-        println!("dim size: {}", dim_size);
 
         let mut organisms = Array::from_shape_fn(vec![dim_size; num_dims], |_|{
             let org = problem_config.random_organism_generator.generate_organism(problem.as_ref());
@@ -107,10 +106,7 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
         let mut id_a = Vec::with_capacity(shp.len());
         let mut id_b = Vec::with_capacity(shp.len());
 
-        println!("shp={:?}", &shp);
-
         for &d in &shp {
-            println!("d={}", d);
             let val_a = rng.gen_range(0,d);
             id_a.push(val_a);
 
@@ -180,6 +176,8 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
             let removed_org: &mut HashMap<F, Organism<V>> = v.get_mut(removed.as_slice()).unwrap();
             removed_org.insert(new_feature, org);
         }
+
+        println!("shape of cells: {:?}", self.organisms.cells.view().shape());
 
         self.organisms.cells.view().as_slice().unwrap().iter().flat_map(|hm: &HashMap<F, Organism<V>>| {
             hm.values().cloned().collect::<Vec<Organism<V>>>()
