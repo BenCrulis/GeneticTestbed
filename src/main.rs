@@ -50,6 +50,7 @@ use algorithm::algorithm::ReplacementSelection;
 use algorithm::selection::MetropolisHastings;
 use algorithm::selection::GreedySelection;
 use algorithm::simple::SimpleReplacement;
+use algorithm::grid_ga;
 use algorithm::util::sorted_scores;
 
 use rand::{thread_rng, Rng};
@@ -65,6 +66,7 @@ use serde::{Serialize, Deserialize, Serializer};
 use std::fs::File;
 use std::path::Path;
 use std::io::{BufWriter, LineWriter, Write};
+use crate::problems::Hyperparameter;
 
 #[derive(Clone, Debug)]
 struct Iteration {
@@ -337,11 +339,28 @@ fn simple_metropolis_ga<V: Clone + 'static,P: 'static,F: 'static,H: Copy + 'stat
     })
 }
 
+fn grid_ga<V: 'static + Clone,
+    P: 'static,
+    F: 'static + Eq + Clone + Hash,
+    H: 'static + Hyperparameter + Clone>(
+        use_features: bool,
+        use_hyperparameter_mapping: bool,
+        number_of_spatial_dimensions: usize) -> Rc<AlgoConfig<V,P,F,H>> {
+    return Rc::new(AlgoConfig {
+        elitism: Rc::new(MetropolisHastings{}),
+        replacement_selection: Rc::new(grid_ga::GeneralizedMAPElite {
+            use_features,
+            use_hyperparameter_mapping,
+            number_of_spatial_dimensions
+        })
+    });
+}
+
 fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,Vec<usize>,DiscreteHyperparameters>> {
     Rc::new(ProblemConfig {
         random_organism_generator: Rc::new(TSPRandomSolution{}),
-        problem_instance_generator: Rc::new(SimpleTSPInstanceGenerator{ number_of_cities: 100 }),
-        feature_mapper: Rc::new(TSPFeatureMapper{ number_cities_mapped: 2 }),
+        problem_instance_generator: Rc::new(SimpleTSPInstanceGenerator{ number_of_cities: 50 }),
+        feature_mapper: Rc::new(TSPFeatureMapper{ number_cities_mapped: 1 }),
         constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.2 },
         hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 }),
         mutator: Rc::new(TSPMutator{}),
@@ -354,7 +373,7 @@ fn main() {
     println!("Hello, world!");
 
     let common_config = CommonParameters {
-        population_size: 100,
+        population_size: 500,
         number_of_repetitions: 10,
         number_of_iterations: 10
     };
@@ -363,7 +382,7 @@ fn main() {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
         algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>(),
-                         simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>()]
+                         grid_ga(true, true, 2)]
     })];
 
     let mut total_number_repetitions = 0;
