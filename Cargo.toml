@@ -5,6 +5,7 @@ authors = ["ben <bencrulis@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+ndarray = "0.13.0"
 csv = "1.1.1"
 ordered-float = "*"
 rand = "*"
