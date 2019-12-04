@@ -368,7 +368,8 @@ fn all_algos_configs<V: 'static + Clone,P: 'static ,F: 'static + Eq + Clone + Ha
 fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,Vec<usize>,DiscreteHyperparameters>> {
     Rc::new(ProblemConfig {
         random_organism_generator: Rc::new(TSPRandomSolution{}),
-        problem_instance_generator: Rc::new(SimpleTSPInstanceGenerator{ number_of_cities: 50 }),
+        problem_instance_generator: Rc::new(SimpleTSPInstanceGenerator{ number_of_cities: 50,
+            number_of_dimensions: 2}),
         feature_mapper: Rc::new(TSPFeatureMapper{ number_cities_mapped: 1 }),
         constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.5 },
         hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 }),
@@ -446,5 +447,5 @@ fn main() {
 
     let after_moment = chrono::Local::now();
     let total_duration = after_moment.signed_duration_since(start_moment);
-    println!("Finished running tests in {}\nExiting...", total_duration.to_string());
+    println!("Finished running tests in {} minute(s)\nExiting...", total_duration.num_minutes().to_string());
 }
