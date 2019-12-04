@@ -64,10 +64,11 @@ impl<V: Clone + 'static,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparame
         let pop_per_cell = pop_size/possibles_features;
 
 
-        let num_dims = problem_config.hyperparameter_mapper.number_of_hyperparameters();
+        let num_dims = problem_config.hyperparameter_mapper.number_of_hyperparameters().max(self.number_of_spatial_dimensions);
 
 
-        let dim_size = (pop_per_cell as f64).powf(1.0/num_dims as f64) as usize;
+        //let dim_size = (pop_per_cell as f64).powf(1.0/num_dims as f64) as usize;
+        let dim_size = (pop_size as f64).powf(1.0/num_dims as f64) as usize;
 
 
         let organisms = Array::from_shape_fn(vec![dim_size; num_dims], |_|{
