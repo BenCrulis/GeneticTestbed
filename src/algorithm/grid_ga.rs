@@ -67,8 +67,8 @@ impl<V: Clone + 'static,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparame
         let num_dims = problem_config.hyperparameter_mapper.number_of_hyperparameters().max(self.number_of_spatial_dimensions);
 
 
-        //let dim_size = (pop_per_cell as f64).powf(1.0/num_dims as f64) as usize;
-        let dim_size = (pop_size as f64).powf(1.0/num_dims as f64) as usize;
+        let dim_size = (pop_per_cell as f64).powf(1.0/num_dims as f64) as usize;
+        //let dim_size = (pop_size as f64).powf(1.0/num_dims as f64) as usize;
 
 
         let organisms = Array::from_shape_fn(vec![dim_size; num_dims], |_|{
@@ -137,7 +137,12 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
 
         self.problem_config.mutator.mutate(&mut org_a.genotype, &hyper);
 
-        let feature_a = self.problem_config.feature_mapper.project(&org_a.genotype);
+        let feature_a = if self.algo_config.use_features {
+            self.problem_config.feature_mapper.project(&org_a.genotype)
+        }
+        else {
+            self.problem_config.feature_mapper.default_features()
+        };
 
         let score_a = org_a.score_with_cache(self.problem_config.scorer.as_ref(), self.problem.as_ref());
 
