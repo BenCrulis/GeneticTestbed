@@ -335,7 +335,7 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 
 fn simple_metropolis_ga<V: Clone + 'static,P: 'static,F: 'static,H: Copy + 'static>() -> Rc<AlgoConfig<V,P,F,H>> {
     return Rc::new(AlgoConfig {
-        elitism: Rc::new(MetropolisHastings{}),
+        elitism: Rc::new(GreedySelection{}),
         replacement_selection: Rc::new(SimpleReplacement{})
     })
 }
@@ -348,13 +348,21 @@ fn grid_ga<V: 'static + Clone,
         use_hyperparameter_mapping: bool,
         number_of_spatial_dimensions: usize) -> Rc<AlgoConfig<V,P,F,H>> {
     return Rc::new(AlgoConfig {
-        elitism: Rc::new(MetropolisHastings{}),
+        elitism: Rc::new(GreedySelection{}),
         replacement_selection: Rc::new(grid_ga::GeneralizedMAPElite {
             use_features,
             use_hyperparameter_mapping,
             number_of_spatial_dimensions
         })
     });
+}
+
+fn all_algos_configs<V: 'static + Clone,P: 'static ,F: 'static + Eq + Clone + Hash ,H: 'static + Hyperparameter + Copy + Clone>() -> Vec<Rc<AlgoConfig<V,P,F,H>>> {
+    vec![simple_metropolis_ga(),
+         grid_ga(false, false, 2),
+        grid_ga(true, false, 2),
+        grid_ga(false, true, 2),
+         grid_ga(true, true, 2)]
 }
 
 fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,Vec<usize>,DiscreteHyperparameters>> {
@@ -371,19 +379,18 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
 
 
 fn main() {
-    let file_prefix = "test";
+    let file_prefix = "test_all";
 
     let common_config = CommonParameters {
         population_size: 500,
-        number_of_repetitions: 10,
-        number_of_iterations: 1000
+        number_of_repetitions: 5,
+        number_of_iterations: 5000
     };
 
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
-        algorithms: vec![simple_metropolis_ga::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>(),
-                         grid_ga(true, true, 2)]
+        algorithms: all_algos_configs::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>()
     })];
 
     let mut total_number_repetitions = 0;
@@ -395,7 +402,7 @@ fn main() {
 
     println!("Computing {} runs", total_number_repetitions);
 
-    let start_moment = chrono::Utc::now();
+    let start_moment = chrono::Local::now();
     let mut i: u32 = 1;
 
     for (config_index, config) in configs.iter().enumerate() {
@@ -421,7 +428,7 @@ fn main() {
         let mut csv_writer = csv::Writer::from_writer(writer);
         Iteration::write_header(&mut csv_writer);
         for it in config.execute() {
-            let now_moment = chrono::Utc::now();
+            let now_moment = chrono::Local::now();
             let duration = now_moment.signed_duration_since(start_moment);
             let speed = duration/i as i32;
             let estimated_reamining_duration = speed*(total_number_repetitions-i as u64) as i32;
@@ -437,5 +444,7 @@ fn main() {
         }
     }
 
-    println!("Finished running tests, exiting...");
+    let after_moment = chrono::Local::now();
+    let total_duration = after_moment.signed_duration_since(start_moment);
+    println!("Finished running tests in {}\nExiting...", total_duration.to_string());
 }
