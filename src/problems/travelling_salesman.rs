@@ -37,7 +37,7 @@ impl<T: Eq + Hash + Clone> Scorer<TSPValue<T>, TSPInstance<T>> for TSPScorer {
             sum += *problem.distances.get(&t).unwrap();
         }
 
-        return problem.max_dist*genome.permutation.len() as f64-sum;
+        return (problem.max_dist*genome.permutation.len() as f64-sum)/problem.max_dist;
     }
 }
 
@@ -56,7 +56,7 @@ impl<T: Clone> Mutator<TSPValue<T>, DiscreteHyperparameters> for TSPMutator {
 
             let mut index_b= rng.gen_range(0, cities.len());
             while index_b == index_a {
-                index_b= rng.gen_range(0, cities.len());
+                index_b = rng.gen_range(0, cities.len());
             }
 
             let tmp = cities[index_b].clone();
