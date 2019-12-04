@@ -61,7 +61,7 @@ impl<V: Clone + 'static,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparame
 
         assert!(pop_size > possibles_features); // required for fair comparison by maintaining same pop size between algos
 
-        let pop_per_cell = (pop_size/possibles_features);
+        let pop_per_cell = pop_size/possibles_features;
 
 
         let num_dims = problem_config.hyperparameter_mapper.number_of_hyperparameters();
@@ -70,7 +70,7 @@ impl<V: Clone + 'static,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparame
         let dim_size = (pop_per_cell as f64).powf(1.0/num_dims as f64) as usize;
 
 
-        let mut organisms = Array::from_shape_fn(vec![dim_size; num_dims], |_|{
+        let organisms = Array::from_shape_fn(vec![dim_size; num_dims], |_|{
             let org = problem_config.random_organism_generator.generate_organism(problem.as_ref());
             let mut hm = HashMap::new();
 
@@ -118,63 +118,48 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
             id_b.push(val_b as usize)
         }
 
-        let feature_a;
-        let feature_b;
-
-        let score_a = {
-            let mut v = self.organisms.cells.view_mut();
-            let hm_a: &mut HashMap<F,Organism<V>> = v.get_mut(id_a.as_slice()).unwrap();
-            let mut vec: Vec<(&F, &mut Organism<V>)> = hm_a.iter_mut().collect();
-            let (f_a, org_a) = vec.choose_mut(&mut rng).unwrap();
-            feature_a = f_a.clone();
-            org_a.score_with_cache(self.problem_config.scorer.as_ref(), self.problem.as_ref())
-        };
-
-        let score_b = {
-            let mut v = self.organisms.cells.view_mut();
-            let hm_a: &mut HashMap<F,Organism<V>> = v.get_mut(id_b.as_slice()).unwrap();
-            let mut vec: Vec<(&F, &mut Organism<V>)> = hm_a.iter_mut().collect();
-            let (f_b, org_b) = vec.choose_mut(&mut rng).unwrap();
-            feature_b = f_b.clone();
-            org_b.score_with_cache(self.problem_config.scorer.as_ref(), self.problem.as_ref())
-        };
-
-        let keep_a = self.elitism.choose(score_a, score_b);
-
-        let (keeped, removed, feat_source) = if keep_a {
-            (id_a, id_b, feature_a)
-        }
-        else {
-            (id_b, id_a, feature_b)
-        };
-
-        let mut org: Organism<V> = {
+        let mut org_a: Organism<V> = {
             let v = self.organisms.cells.view();
-            let hm: &HashMap<F, Organism<V>> = v.get(keeped.as_slice()).unwrap();
-            hm.get(&feat_source).unwrap().clone()
+            let hm_a: &HashMap<F,Organism<V>> = v.get(id_a.as_slice()).unwrap();
+            let vec: Vec<(&F, &Organism<V>)> = hm_a.iter().collect();
+            let (_, org) = vec.choose(&mut rng).unwrap();
+            (*org).clone()
         };
 
         let hyper = if self.algo_config.use_hyperparameter_mapping {
-            let coord: Vec<(usize,usize)> = keeped.iter().zip(shp.iter()).map(|(&x,&y)| (x,y)).collect();
+            let coord: Vec<(usize,usize)> = id_a.iter().zip(shp.iter()).map(|(&x,&y)| (x,y)).collect();
             self.problem_config.hyperparameter_mapper.map_hyperparameters(&coord)
         }
         else {
             self.problem_config.constant_hyperparameters.clone()
         };
 
-        self.problem_config.mutator.mutate(&mut org.genotype, &hyper);
+        self.problem_config.mutator.mutate(&mut org_a.genotype, &hyper);
 
-        let new_feature = if self.algo_config.use_features {
-            self.problem_config.feature_mapper.project(&org.genotype)
-        }
-        else {
-            self.problem_config.feature_mapper.default_features()
+        let feature_a = self.problem_config.feature_mapper.project(&org_a.genotype);
+
+        let score_a = org_a.score_with_cache(self.problem_config.scorer.as_ref(), self.problem.as_ref());
+
+        let replace = {
+            let mut v = self.organisms.cells.view_mut();
+            let hm_b: &mut HashMap<F,Organism<V>> = v.get_mut(id_b.as_slice()).unwrap();
+            let op_org_b = hm_b.get_mut(&feature_a);
+
+            match op_org_b {
+                Some(org_b) => {
+                    let score_b = org_b.score_with_cache(self.problem_config.scorer.as_ref(), self.problem.as_ref());
+                    self.elitism.choose(score_a, score_b)
+                },
+                None => true
+            }
         };
 
-        {
+
+
+        if replace {
             let mut v = self.organisms.cells.view_mut();
-            let removed_org: &mut HashMap<F, Organism<V>> = v.get_mut(removed.as_slice()).unwrap();
-            removed_org.insert(new_feature, org);
+            let feat_map: &mut HashMap<F, Organism<V>> = v.get_mut(id_b.as_slice()).unwrap();
+            feat_map.insert(feature_a, org_a);
         }
 
         //println!("shape of cells: {:?}", self.organisms.cells.view().shape());

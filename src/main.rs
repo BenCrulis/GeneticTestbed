@@ -85,7 +85,7 @@ struct Iteration {
 }
 
 impl Iteration {
-    fn write_header(writer: &mut csv::Writer<File>) {
+    fn write_header(writer: &mut csv::Writer<File>) -> Result<(), csv::Error> {
         writer.write_record(&[
             "repetition",
             "algorithm index",
@@ -98,7 +98,7 @@ impl Iteration {
             "median score",
             "number of organisms",
             "variance"
-        ]);
+        ])
     }
     fn write_row(&self, writer: &mut csv::Writer<File>) -> Result<(),csv::Error> {
         writer.write_record(&[
@@ -311,7 +311,7 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
             //println!("Scores: {:?}", &sorted_score);
 
             let mean_val = mean(sorted_score.as_slice());
-            let mut iter = Iteration {
+            let iter = Iteration {
                 iteration: self.i,
                 repetition: self.my_config_it.repetitions+1,
                 index_algo: self.my_config_it.index_algo,
@@ -390,7 +390,7 @@ fn main() {
 
     for conf in &configs {
         let common_conf = conf.get_common_config();
-        total_number_repetitions = common_config.number_of_repetitions*conf.number_of_algorithms() as u64;
+        total_number_repetitions = common_conf.number_of_repetitions*conf.number_of_algorithms() as u64;
     }
 
     println!("Computing {} runs", total_number_repetitions);
@@ -398,10 +398,10 @@ fn main() {
     let start_moment = chrono::Utc::now();
     let mut i: u32 = 1;
 
-    for (config_index, mut config) in configs.iter().enumerate() {
+    for (config_index, config) in configs.iter().enumerate() {
         let p_params = config.get_problem_config_parameters();
         println!("Config n°{}:\n{:?}", config_index ,p_params);
-        let mut file = std::fs::File::create(
+        let file = std::fs::File::create(
             Path::new(format!("{}_results_{}.csv", file_prefix, config_index).as_str()));
         let mut writer = file.unwrap();
 

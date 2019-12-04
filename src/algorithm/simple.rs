@@ -48,7 +48,7 @@ impl<V: Clone + 'static,P: 'static,F: 'static,H: Clone + 'static> ReplacementSel
         let generator = &problem_config.random_organism_generator;
 
         let mut gr = vec![];
-        for i in 0..pop_size {
+        for _i in 0..pop_size {
             gr.push(generator.generate_organism(problem.as_ref()));
         }
         return Box::new(SimpleReplacementExec {
@@ -73,7 +73,7 @@ impl<V: Clone,P,F,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,F,H> {
             index_b = rng.gen_range(0, size);
         }
 
-        let mut score_a;
+        let score_a;
 
         {
             let org_a= self.organisms.get_mut(index_a).unwrap();
@@ -81,7 +81,7 @@ impl<V: Clone,P,F,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,F,H> {
 
         }
 
-        let mut score_b;
+        let score_b;
 
         {
             let org_b = self.organisms.get_mut(index_b).unwrap();
