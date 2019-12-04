@@ -100,7 +100,7 @@ impl Iteration {
             "variance"
         ]);
     }
-    fn write_row(&self, writer: &mut csv::Writer<File>) {
+    fn write_row(&self, writer: &mut csv::Writer<File>) -> Result<(),csv::Error> {
         writer.write_record(&[
             self.repetition.to_string(),
             self.index_algo.to_string(),
@@ -113,7 +113,7 @@ impl Iteration {
             self.median_score.to_string(),
             self.number_of_organisms.to_string(),
             self.pop_score_variance.to_string()
-        ]);
+        ])
     }
 }
 
@@ -405,10 +405,18 @@ fn main() {
             Path::new(format!("{}_results_{}.csv", file_prefix, config_index).as_str()));
         let mut writer = file.unwrap();
 
-        writer.write_all("\"".as_bytes());
-        writer.write_all(p_params.to_string().as_bytes());
+        let written = writer.write_all("\"".as_bytes()).and(
+        writer.write_all(p_params.to_string().as_bytes())).and(
+        writer.write_all("\"\n".as_bytes()));
 
-        writer.write_all("\"\n".as_bytes());
+        match written {
+            Ok(()) => {
+                println!("JSON header written");
+            }
+            _ => {
+                println!("JSON header could not be written");
+            }
+        }
 
         let mut csv_writer = csv::Writer::from_writer(writer);
         Iteration::write_header(&mut csv_writer);
@@ -422,10 +430,12 @@ fn main() {
             println!("Estimated end: {}", estimated_end.to_string());
 
             for iteration in it {
-                iteration.write_row(&mut csv_writer)
+                iteration.write_row(&mut csv_writer);
             }
 
             i += 1;
         }
     }
+
+    println!("Finished running tests, exiting...");
 }
