@@ -37,7 +37,8 @@ impl<T: Eq + Hash + Clone> Scorer<TSPValue<T>, TSPInstance<T>> for TSPScorer {
             sum += *problem.distances.get(&t).unwrap();
         }
 
-        return (problem.max_dist*genome.permutation.len() as f64-sum)/problem.max_dist;
+        let max_travel_distance = problem.max_dist*genome.permutation.len() as f64;
+        return (max_travel_distance-sum)/max_travel_distance;
     }
 }
 
@@ -111,15 +112,6 @@ impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>,TSPInstance<T>> for
     fn default_features(&self) -> Vec<T> {
         Vec::new()
     }
-
-    fn possible_feature_values(&self, problem: &TSPInstance<T>) -> usize {
-        let mut values = 1;
-        for i in ((problem.number_of_cities-self.number_cities_mapped)..=problem.number_of_cities).rev() {
-            values *= i;
-        }
-
-        return values;
-    }
 }
 
 
@@ -133,6 +125,12 @@ impl<T> TSPInstance<T> {
             min_dist,
             number_of_cities
         }
+    }
+}
+
+impl<T> TSPInstance<T> {
+    fn distance(city_1: &T, city_2: &T) -> f64 {
+        2.0
     }
 }
 
@@ -165,7 +163,8 @@ impl OrganismGenerator<TSPValue<usize>,TSPInstance<usize>> for TSPRandomSolution
 
 
 pub struct SimpleTSPInstanceGenerator {
-    pub number_of_cities: usize
+    pub number_of_cities: usize,
+    pub number_of_dimensions: usize
 }
 
 impl Named for SimpleTSPInstanceGenerator {
@@ -188,10 +187,24 @@ impl<'a> ProblemInstanceGenerator<TSPInstance<usize>> for SimpleTSPInstanceGener
         let mut dists = HashMap::new();
         let mut rng = thread_rng();
 
+        let mut cities = Vec::with_capacity(self.number_of_cities);
+        for i in 0..self.number_of_cities {
+            let mut coords = Vec::with_capacity(self.number_of_dimensions);
+            for d in 0..self.number_of_dimensions {
+                coords.push(rng.gen_range(0.0,100.0));
+            }
+            cities.push(coords);
+        }
+
         for i in 0..self.number_of_cities {
             for j in (i+1)..self.number_of_cities {
 
-                let dist = rng.gen_range(0.0,100.0);
+                //let dist = rng.gen_range(0.0,100.0);
+                let dist = cities[i].iter()
+                                        .zip(cities[j].iter())
+                                        .map(|(&x,&y)| (x-y as f64).powf(2.0))
+                                        .sum::<f64>()
+                                        .sqrt();
 
                 dists.insert((i,j), dist);
                 dists.insert((j,i), dist);

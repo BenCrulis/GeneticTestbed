@@ -5,11 +5,13 @@ authors = ["ben <bencrulis@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+num = "0.2.0"
 ndarray = "0.13.0"
 csv = "1.1.1"
 chrono = "0.4.10"
 ordered-float = "*"
 rand = "*"
+rand_distr = "0.2.2"
 serde = "*"
 serde_json = "1.0.42"
 statistical = "1.0.0"
