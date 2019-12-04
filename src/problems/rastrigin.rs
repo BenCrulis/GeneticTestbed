@@ -10,6 +10,7 @@ use rand::{thread_rng, Rng};
 use rand_distr::Normal;
 use crate::features::FeatureMapper;
 use num::pow;
+use crate::organism::OrganismGenerator;
 
 pub fn rastrigin(a: f64, x: &[f64]) -> f64 {
     let n: f64 = x.len() as f64;
@@ -151,3 +152,27 @@ impl FeatureMapper<RastriginValue, RastriginFeature, Rastrigin> for RastriginMap
 
 #[derive(Copy, Clone)]
 struct RastriginGenerator {}
+
+impl Named for RastriginGenerator {
+    fn name(&self) -> String {
+        "Rastrigin value generator".to_string()
+    }
+}
+
+impl Parametrized for RastriginGenerator {}
+
+impl OrganismGenerator<RastriginValue, Rastrigin> for RastriginGenerator {
+    fn generate(&self, problem: &Rastrigin) -> RastriginValue {
+        let mut new_val = Vec::with_capacity(problem.nb_dimensions);
+
+        let mut rng = thread_rng();
+
+        for d in 0..problem.nb_dimensions {
+            new_val.push(rng.gen_range(-problem.max_abs_val, problem.max_abs_val));
+        }
+
+        return RastriginValue {
+            value: new_val
+        };
+    }
+}
