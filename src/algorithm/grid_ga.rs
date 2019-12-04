@@ -113,12 +113,21 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
 
         let mut id_b = id_a.clone();
         let i = rng.gen_range(0,id_a.len());
+        let d_max = (shp[i] as i64 -1).max(0) as usize;
 
         let mut val_b = id_b[i] as i64;
 
-        val_b += if rng.gen_bool(0.5) { 1 } else { -1 };
+        val_b += if i == 0 {
+            1
+        } else if i == d_max {
+            -1
+        } else if rng.gen_bool(0.5) {
+            1
+        } else {
+            -1
+        };
 
-        val_b = val_b.max(0).min((shp[i] - 1).max(0) as i64);
+        val_b = val_b.max(0).min(d_max as i64);
 
         id_b[i] = val_b as usize;
 
