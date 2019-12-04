@@ -46,16 +46,16 @@ pub fn regularized_rastrigin(b: f64, x: &[f64]) -> f64 {
 }
 
 #[derive(Clone)]
-struct RastriginValue {
-    value: Vec<f64>
+pub struct RastriginValue {
+    pub value: Vec<f64>
 }
 
 #[derive(Copy, Clone)]
-struct Rastrigin {
-    a: f64,
-    b: f64,
-    max_abs_val: f64,
-    nb_dimensions: usize
+pub struct Rastrigin {
+    pub a: f64,
+    pub b: f64,
+    pub max_abs_val: f64,
+    pub nb_dimensions: usize
 }
 
 impl Named for Rastrigin {
@@ -82,7 +82,7 @@ impl ProblemInstanceGenerator<Rastrigin> for Rastrigin {
 }
 
 #[derive(Copy, Clone)]
-struct RegRastriginScorer {}
+pub struct RegRastriginScorer {}
 
 impl Scorer<RastriginValue, Rastrigin> for RegRastriginScorer {
     fn score(&self, genome: &RastriginValue, problem: &Rastrigin) -> f64 {
@@ -91,7 +91,7 @@ impl Scorer<RastriginValue, Rastrigin> for RegRastriginScorer {
 }
 
 #[derive(Copy, Clone)]
-struct RastriginMutator {}
+pub struct RastriginMutator {}
 
 impl Mutator<RastriginValue, ContinuousHyperparameters> for RastriginMutator {
     fn mutate(&self, genome: &mut RastriginValue, hyperparameters: &ContinuousHyperparameters) {
@@ -106,15 +106,15 @@ impl Mutator<RastriginValue, ContinuousHyperparameters> for RastriginMutator {
 }
 
 #[derive(Copy, Clone)]
-struct RastriginMapper {
-    resolution: usize,
-    number_of_dimensions: usize,
-    max_abs_val: f64
+pub struct RastriginMapper {
+    pub resolution: usize,
+    pub number_of_dimensions: usize,
+    pub max_abs_val: f64
 }
 
 #[derive(Clone,Eq,Hash,Ord, PartialOrd, PartialEq)]
-struct RastriginFeature {
-    bin_coords: Vec<isize>
+pub struct RastriginFeature {
+    pub bin_coords: Vec<isize>
 }
 
 impl Named for RastriginMapper {
@@ -151,7 +151,7 @@ impl FeatureMapper<RastriginValue, RastriginFeature, Rastrigin> for RastriginMap
 }
 
 #[derive(Copy, Clone)]
-struct RastriginGenerator {}
+pub struct RastriginGenerator {}
 
 impl Named for RastriginGenerator {
     fn name(&self) -> String {
