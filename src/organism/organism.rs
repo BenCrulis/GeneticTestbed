@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::algorithm::mutation::Mutator;
 use crate::scoring::Scorer;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Organism<T> {
     pub genotype: T,
     score: Option<f64>
@@ -34,6 +34,12 @@ impl<T> Organism<T> {
             }
             Some(s) => s
         }
+    }
+}
+
+impl<V: PartialEq> Organism<V> {
+    pub fn same_genetic_code(&self, other: &Organism<V>) -> bool {
+        return self.genotype.eq(&other.genotype);
     }
 }
 
