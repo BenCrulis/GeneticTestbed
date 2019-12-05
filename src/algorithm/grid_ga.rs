@@ -135,8 +135,8 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
             let v = self.organisms.cells.view();
             let hm_a: &HashMap<F,Organism<V>> = v.get(id_a.as_slice()).unwrap();
             let vec: Vec<(&F, &Organism<V>)> = hm_a.iter().collect();
-            let (_, org) = vec.choose(&mut rng).unwrap();
-            (*org).clone()
+            let &(_, org) = vec.choose(&mut rng).unwrap();
+            org.clone()
         };
 
         let old_feature = if self.algo_config.use_features {
@@ -154,7 +154,7 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
             self.problem_config.constant_hyperparameters.clone()
         };
 
-        self.problem_config.mutator.mutate(&mut org_a.genotype, &hyper);
+         org_a.mutate(self.problem_config.mutator.as_ref(), &hyper);
 
         let feature_a = if self.algo_config.use_features {
             self.problem_config.feature_mapper.project(&org_a.genotype)

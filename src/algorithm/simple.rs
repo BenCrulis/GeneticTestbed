@@ -101,7 +101,7 @@ impl<V: Clone,P,F,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,F,H> {
             .unwrap()
             .clone();
 
-        new_org.mutate(self.problem_config.mutator.clone(),
+        new_org.mutate(self.problem_config.mutator.as_ref(),
                     &self.problem_config.constant_hyperparameters);
 
         self.organisms[to_replace] = new_org;

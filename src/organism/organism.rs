@@ -12,7 +12,7 @@ pub struct Organism<T> {
 
 impl<T> Organism<T> {
 
-    pub fn mutate<H>(&mut self, mutator: Rc<dyn Mutator<T,H>>, hyperparameters: &H) {
+    pub fn mutate<H>(&mut self, mutator: &dyn Mutator<T,H>, hyperparameters: &H) {
         mutator.mutate(&mut self.genotype, hyperparameters);
         self.score = None;
     }
