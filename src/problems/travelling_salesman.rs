@@ -159,7 +159,7 @@ impl OrganismGenerator<TSPValue<usize>,TSPInstance<usize>> for TSPRandomSolution
         let mut v: Vec<usize> = (0..problem.number_of_cities).collect();
         let mut rng = thread_rng();
 
-        v.shuffle(&mut rng);
+        //v.shuffle(&mut rng);
 
         return TSPValue{permutation: v};
     }
