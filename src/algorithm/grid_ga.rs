@@ -10,9 +10,8 @@ use crate::organism::Organism;
 use crate::problems::Hyperparameter;
 use std::collections::HashMap;
 use rand::{thread_rng, Rng};
-use ndarray::{Array, ArrayView, ViewRepr};
+use ndarray::{Array, ArrayView, ViewRepr, ArrayViewMut, IxDynImpl, Dim};
 use rand::seq::SliceRandom;
-use std::borrow::BorrowMut;
 use std::iter::Zip;
 
 #[derive(Copy, Clone)]
@@ -47,7 +46,7 @@ pub struct GeneralizedMAPEliteExec<V,P,F,H> {
     elitism: Rc<dyn Elitism>
 }
 
-impl<V: Clone + 'static,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparameter + 'static + Clone> ReplacementSelection<V,P,F,H> for GeneralizedMAPElite {
+impl<V: Clone + 'static + PartialEq,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparameter + 'static + Clone> ReplacementSelection<V,P,F,H> for GeneralizedMAPElite {
     fn initialize_solver(&self, pop_size: usize, problem: Rc<P>, elitism: Rc<dyn Elitism>, problem_config: Rc<ProblemConfig<V, P, F, H>>) -> Box<dyn UpdatableSolver<V>> {
 
         let possibles_features = if self.use_features {
@@ -97,14 +96,14 @@ impl<V: Clone + 'static,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparame
 }
 
 
-impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<V> for GeneralizedMAPEliteExec<V,P,F,H> {
+impl<V: Clone + PartialEq,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<V> for GeneralizedMAPEliteExec<V,P,F,H> {
     fn update(&mut self) -> Vec<Organism<V>> {
         let mut rng = thread_rng();
 
 
         let shp = self.organisms.cells.view().shape().to_vec();
 
-        let mut id_a = Vec::with_capacity(shp.len());
+        let mut id_a: Vec<usize> = Vec::with_capacity(shp.len());
 
         for &d in &shp {
             let val_a = rng.gen_range(0,d);
@@ -139,6 +138,8 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
             org.clone()
         };
 
+        let old = org_a.clone();
+
         let old_feature = if self.algo_config.use_features {
             self.problem_config.feature_mapper.project(&org_a.genotype)
         }
@@ -154,8 +155,6 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
             self.problem_config.constant_hyperparameters.clone()
         };
 
-         org_a.mutate(self.problem_config.mutator.as_ref(), &hyper);
-
         let feature_a = if self.algo_config.use_features {
             self.problem_config.feature_mapper.project(&org_a.genotype)
         }
@@ -169,7 +168,8 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
 
         let mut score_b = score_a;
         let mut replace = {
-            let mut v = self.organisms.cells.view_mut();
+            // ArrayViewMut<ViewRepr<&mut ?>, IxDyn<IxDynImpl>>
+            let mut v: ArrayViewMut<HashMap<F, Organism<V>>, Dim<IxDynImpl>> = self.organisms.cells.view_mut();
             let hm_b: &mut HashMap<F,Organism<V>> = v.get_mut(id_b.as_slice()).unwrap();
             let op_org_b = hm_b.get_mut(&feature_a);
 
@@ -183,10 +183,10 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
             }
         };
 
-        replace = replace && (old_feature != feature_a);
+        replace = replace && (old_feature != feature_a || id_a != id_b );
 
         if replace {
-            let mut v = self.organisms.cells.view_mut();
+            let mut v: ArrayViewMut<HashMap<F,Organism<V>>, Dim<IxDynImpl>> = self.organisms.cells.view_mut();
             let feat_map: &mut HashMap<F, Organism<V>> = v.get_mut(id_b.as_slice()).unwrap();
             feat_map.insert(feature_a.clone(), org_a);
             assert!(score_a >= score_b);
@@ -201,7 +201,20 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
 
         //println!("shape of cells: {:?}", self.organisms.cells.view().shape());
 
-        self.organisms.cells.view().as_slice().unwrap().iter().flat_map(|hm: &HashMap<F, Organism<V>>| {
+        /*
+        let mut returned = vec![];
+        let gr = &self.organisms.cells;
+        for cell in gr.iter() {
+            for org in cell.values() {
+                returned.push(org.clone());
+            }
+        }
+
+        return returned;
+        */
+
+
+        self.organisms.cells.view().iter().flat_map(|hm: &HashMap<F, Organism<V>>| {
             hm.values().cloned().collect::<Vec<Organism<V>>>()
         }).collect()
     }

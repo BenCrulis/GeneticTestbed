@@ -303,6 +303,12 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 
             let number_of_organisms = organisms.len();
 
+            /*
+            println!("Parameters: {}\nNumber of organism: {}",
+                     self.my_config_it.my_config.algorithms[self.my_config_it.index_algo].replacement_selection.parameters(),
+                    number_of_organisms);
+            */
+
             let sorted_score = sorted_scores(
                 organisms,
                 self.my_config_it.my_config.problem_config.scorer.as_ref(),
@@ -340,7 +346,7 @@ fn simple_metropolis_ga<V: Clone + 'static,P: 'static,F: 'static,H: Copy + 'stat
     })
 }
 
-fn grid_ga<V: 'static + Clone,
+fn grid_ga<V: 'static + Clone + PartialEq,
     P: 'static,
     F: 'static + Eq + Clone + Hash,
     H: 'static + Hyperparameter + Clone>(
@@ -357,11 +363,11 @@ fn grid_ga<V: 'static + Clone,
     });
 }
 
-fn all_algos_configs<V: 'static + Clone,P: 'static ,F: 'static + Eq + Clone + Hash ,H: 'static + Hyperparameter + Copy + Clone>() -> Vec<Rc<AlgoConfig<V,P,F,H>>> {
+fn all_algos_configs<V: 'static + Clone + PartialEq,P: 'static ,F: 'static + Eq + Clone + Hash ,H: 'static + Hyperparameter + Copy + Clone>() -> Vec<Rc<AlgoConfig<V,P,F,H>>> {
     vec![simple_metropolis_ga(),
          grid_ga(false, false, 2),
-        grid_ga(true, false, 2),
-        grid_ga(false, true, 2),
+         grid_ga(true, false, 2),
+         grid_ga(false, true, 2),
          grid_ga(true, true, 2)]
 }
 
@@ -379,13 +385,14 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
 }
 
 
+
 fn main() {
     let file_prefix = "test_all";
 
     let common_config = CommonParameters {
-        population_size: 500,
-        number_of_repetitions: 5,
-        number_of_iterations: 5000
+        population_size: 2500,
+        number_of_repetitions: 1,
+        number_of_iterations: 10000
     };
 
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
