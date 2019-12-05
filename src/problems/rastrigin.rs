@@ -94,14 +94,17 @@ impl Scorer<RastriginValue, Rastrigin> for RegRastriginScorer {
 pub struct RastriginMutator {}
 
 impl Mutator<RastriginValue, ContinuousHyperparameters> for RastriginMutator {
-    fn mutate(&self, genome: &mut RastriginValue, hyperparameters: &ContinuousHyperparameters) {
+    fn mutate(&self, genome: &mut RastriginValue, hyperparameters: &ContinuousHyperparameters) -> bool {
         let mut rng = thread_rng();
 
+        let mut changed = false;
         while rng.gen::<f64>() < hyperparameters.mutation_chance {
             let i = rng.gen_range(0, genome.value.len());
             let normal = Normal::new(genome.value[i], hyperparameters.mutation_size).unwrap();
-            genome.value[i] = rng.sample(normal)
+            genome.value[i] = rng.sample(normal);
+            changed = true;
         }
+        changed
     }
 }
 

@@ -12,9 +12,10 @@ pub struct Organism<T> {
 
 impl<T> Organism<T> {
 
-    pub fn mutate<H>(&mut self, mutator: &dyn Mutator<T,H>, hyperparameters: &H) {
-        mutator.mutate(&mut self.genotype, hyperparameters);
+    pub fn mutate<H>(&mut self, mutator: &dyn Mutator<T,H>, hyperparameters: &H) -> bool {
+        let changed = mutator.mutate(&mut self.genotype, hyperparameters);
         self.score = None;
+        return changed;
     }
 
     pub fn get_score(&self) -> Option<f64> {

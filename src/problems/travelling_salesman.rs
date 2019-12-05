@@ -46,10 +46,11 @@ impl<T: Eq + Hash + Clone> Scorer<TSPValue<T>, TSPInstance<T>> for TSPScorer {
 pub struct TSPMutator {}
 
 impl<T: Clone> Mutator<TSPValue<T>, DiscreteHyperparameters> for TSPMutator {
-    fn mutate(&self, genome: &mut TSPValue<T>, hyperparameters: &DiscreteHyperparameters) {
+    fn mutate(&self, genome: &mut TSPValue<T>, hyperparameters: &DiscreteHyperparameters) -> bool {
         let cities = &mut genome.permutation;
 
         let mut rng = thread_rng();
+        let mut changed = false;
 
         while rng.gen::<f64>() < hyperparameters.mutation_chance {
 
@@ -63,7 +64,10 @@ impl<T: Clone> Mutator<TSPValue<T>, DiscreteHyperparameters> for TSPMutator {
             let tmp = cities[index_b].clone();
             cities[index_b] = cities[index_a].clone();
             cities[index_a] = tmp;
+            changed = true;
         }
+
+        return changed;
     }
 }
 
