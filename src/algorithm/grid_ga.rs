@@ -105,26 +105,45 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
         let shp = self.organisms.cells.view().shape().to_vec();
 
         let mut id_a = Vec::with_capacity(shp.len());
-        let mut id_b = Vec::with_capacity(shp.len());
 
         for &d in &shp {
             let val_a = rng.gen_range(0,d);
             id_a.push(val_a);
-
-            let mut val_b = val_a as i64;
-
-            val_b += if rng.gen_bool(0.5) { 1 } else { -1 };
-
-            val_b = val_b.max(0).min(d as i64 - 1);
-            id_b.push(val_b as usize)
         }
+
+        let mut id_b = id_a.clone();
+        let i = rng.gen_range(0,id_a.len());
+        let d_max = (shp[i] as i64 -1).max(0) as usize;
+
+        let mut val_b = id_b[i] as i64;
+
+        val_b += if i == 0 {
+            1
+        } else if i == d_max {
+            -1
+        } else if rng.gen_bool(0.5) {
+            1
+        } else {
+            -1
+        };
+
+        val_b = val_b.max(0).min(d_max as i64);
+
+        id_b[i] = val_b as usize;
 
         let mut org_a: Organism<V> = {
             let v = self.organisms.cells.view();
             let hm_a: &HashMap<F,Organism<V>> = v.get(id_a.as_slice()).unwrap();
             let vec: Vec<(&F, &Organism<V>)> = hm_a.iter().collect();
-            let (_, org) = vec.choose(&mut rng).unwrap();
-            (*org).clone()
+            let &(_, org) = vec.choose(&mut rng).unwrap();
+            org.clone()
+        };
+
+        let old_feature = if self.algo_config.use_features {
+            self.problem_config.feature_mapper.project(&org_a.genotype)
+        }
+        else {
+            self.problem_config.feature_mapper.default_features()
         };
 
         let hyper = if self.algo_config.use_hyperparameter_mapping {
@@ -135,7 +154,7 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
             self.problem_config.constant_hyperparameters.clone()
         };
 
-        self.problem_config.mutator.mutate(&mut org_a.genotype, &hyper);
+         org_a.mutate(self.problem_config.mutator.as_ref(), &hyper);
 
         let feature_a = if self.algo_config.use_features {
             self.problem_config.feature_mapper.project(&org_a.genotype)
@@ -146,26 +165,38 @@ impl<V: Clone,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> UpdatableSolver<
 
         let score_a = org_a.score_with_cache(self.problem_config.scorer.as_ref(), self.problem.as_ref());
 
-        let replace = {
+        assert!(score_a.is_finite());
+
+        let mut score_b = score_a;
+        let mut replace = {
             let mut v = self.organisms.cells.view_mut();
             let hm_b: &mut HashMap<F,Organism<V>> = v.get_mut(id_b.as_slice()).unwrap();
             let op_org_b = hm_b.get_mut(&feature_a);
 
             match op_org_b {
                 Some(org_b) => {
-                    let score_b = org_b.score_with_cache(self.problem_config.scorer.as_ref(), self.problem.as_ref());
+                    score_b = org_b.score_with_cache(self.problem_config.scorer.as_ref(), self.problem.as_ref());
+                    assert!(score_b.is_finite());
                     self.elitism.choose(score_a, score_b)
                 },
                 None => true
             }
         };
 
-
+        replace = replace && (old_feature != feature_a);
 
         if replace {
             let mut v = self.organisms.cells.view_mut();
             let feat_map: &mut HashMap<F, Organism<V>> = v.get_mut(id_b.as_slice()).unwrap();
-            feat_map.insert(feature_a, org_a);
+            feat_map.insert(feature_a.clone(), org_a);
+            assert!(score_a >= score_b);
+        }
+
+        if replace {
+            let v = self.organisms.cells.view();
+            let hm: &HashMap<F, Organism<V>> = v.get(id_b.as_slice()).unwrap();
+            let org = hm.get(&feature_a).unwrap();
+            assert_eq!(org.get_score().unwrap(), score_a);
         }
 
         //println!("shape of cells: {:?}", self.organisms.cells.view().shape());

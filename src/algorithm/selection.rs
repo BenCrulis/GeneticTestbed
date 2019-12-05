@@ -41,6 +41,6 @@ impl Named for GreedySelection {
 
 impl Elitism for GreedySelection {
     fn choose(&self, score_a: f64, score_b: f64) -> bool {
-        return score_a > score_b;
+        return score_a >= score_b;
     }
 }
