@@ -10,7 +10,7 @@ use crate::organism::Organism;
 use crate::problems::Hyperparameter;
 use std::collections::HashMap;
 use rand::{thread_rng, Rng};
-use ndarray::{Array, ArrayView, ViewRepr, ArrayViewMut, IxDynImpl, Dim};
+use ndarray::{Array, ArrayView, ViewRepr, ArrayViewMut, IxDynImpl, Dim, ArrayD, ArrayViewD};
 use rand::seq::SliceRandom;
 use std::iter::Zip;
 
@@ -70,7 +70,7 @@ impl<V: Clone + 'static + PartialEq,P: 'static,F: Hash + Clone + Eq + 'static,H:
         //let dim_size = (pop_size as f64).powf(1.0/num_dims as f64) as usize;
 
 
-        let organisms = Array::from_shape_fn(vec![dim_size; num_dims], |_|{
+        let organisms: ArrayD<HashMap<F,Organism<V>>> = Array::from_shape_fn(vec![dim_size; num_dims], |_|{
             let org = problem_config.random_organism_generator.generate_organism(problem.as_ref());
             let mut hm = HashMap::new();
 
@@ -131,7 +131,7 @@ impl<V: Clone + PartialEq,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> Upda
         id_b[i] = val_b as usize;
 
         let mut org_a: Organism<V> = {
-            let v = self.organisms.cells.view();
+            let v: ArrayViewD<HashMap<F,Organism<V>>> = self.organisms.cells.view();
             let hm_a: &HashMap<F,Organism<V>> = v.get(id_a.as_slice()).unwrap();
             let vec: Vec<(&F, &Organism<V>)> = hm_a.iter().collect();
             let &(_, org) = vec.choose(&mut rng).unwrap();
@@ -155,6 +155,8 @@ impl<V: Clone + PartialEq,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> Upda
             self.problem_config.constant_hyperparameters.clone()
         };
 
+        org_a.mutate(self.problem_config.mutator.as_ref(), &hyper);
+
         let feature_a = if self.algo_config.use_features {
             self.problem_config.feature_mapper.project(&org_a.genotype)
         }
@@ -163,8 +165,6 @@ impl<V: Clone + PartialEq,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> Upda
         };
 
         let score_a = org_a.score_with_cache(self.problem_config.scorer.as_ref(), self.problem.as_ref());
-
-        assert!(score_a.is_finite());
 
         let mut score_b = score_a;
         let mut replace = {
@@ -188,30 +188,8 @@ impl<V: Clone + PartialEq,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> Upda
         if replace {
             let mut v: ArrayViewMut<HashMap<F,Organism<V>>, Dim<IxDynImpl>> = self.organisms.cells.view_mut();
             let feat_map: &mut HashMap<F, Organism<V>> = v.get_mut(id_b.as_slice()).unwrap();
-            feat_map.insert(feature_a.clone(), org_a);
-            assert!(score_a >= score_b);
+            feat_map.insert(feature_a, org_a);
         }
-
-        if replace {
-            let v = self.organisms.cells.view();
-            let hm: &HashMap<F, Organism<V>> = v.get(id_b.as_slice()).unwrap();
-            let org = hm.get(&feature_a).unwrap();
-            assert_eq!(org.get_score().unwrap(), score_a);
-        }
-
-        //println!("shape of cells: {:?}", self.organisms.cells.view().shape());
-
-        /*
-        let mut returned = vec![];
-        let gr = &self.organisms.cells;
-        for cell in gr.iter() {
-            for org in cell.values() {
-                returned.push(org.clone());
-            }
-        }
-
-        return returned;
-        */
 
 
         self.organisms.cells.view().iter().flat_map(|hm: &HashMap<F, Organism<V>>| {
