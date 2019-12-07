@@ -131,7 +131,7 @@ impl Parametrized for RastriginMapper {
 }
 
 impl FeatureMapper<RastriginValue, RastriginFeature, Rastrigin> for RastriginMapper {
-    fn number_of_possible_features(&self, problem: &Rastrigin) -> usize {
+    fn number_of_possible_features(&self, _problem: &Rastrigin) -> usize {
         return pow(self.resolution, self.number_of_dimensions);
     }
 
