@@ -318,6 +318,8 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
             //println!("Scores: {:?}", &sorted_score);
 
             let mean_val = mean(sorted_score.as_slice());
+            let vari = if sorted_score.len() > 1 {
+                variance(sorted_score.as_slice(), Some(mean_val)) } else { 0.0 };
             let iter = Iteration {
                 iteration: self.i,
                 repetition: self.my_config_it.repetitions+1,
@@ -329,7 +331,7 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
                 mean_score: mean_val,
                 median_score: median(sorted_score.as_slice()),
                 number_of_organisms,
-                pop_score_variance: variance(sorted_score.as_slice(), Some(mean_val))
+                pop_score_variance: vari
             };
 
             self.i += 1;
@@ -398,7 +400,7 @@ fn main() {
     let common_config = CommonParameters {
         population_size: 2500,
         number_of_repetitions: 1,
-        number_of_iterations: 1000000
+        number_of_iterations: 100000
     };
 
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
