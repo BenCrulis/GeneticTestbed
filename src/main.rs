@@ -52,6 +52,7 @@ use algorithm::selection::MetropolisHastings;
 use algorithm::selection::GreedySelection;
 use algorithm::simple::SimpleReplacement;
 use algorithm::grid_ga;
+use algorithm::map_elite;
 use algorithm::util::sorted_scores;
 
 use rand::{thread_rng, Rng};
@@ -363,12 +364,17 @@ fn grid_ga<V: 'static + Clone + PartialEq,
     });
 }
 
+
 fn all_algos_configs<V: 'static + Clone + PartialEq,P: 'static ,F: 'static + Eq + Clone + Hash ,H: 'static + Hyperparameter + Copy + Clone>() -> Vec<Rc<AlgoConfig<V,P,F,H>>> {
     vec![simple_metropolis_ga(),
-         grid_ga(false, false, 2),
-         grid_ga(true, false, 2),
-         grid_ga(false, true, 2),
-         grid_ga(true, true, 2)]
+         grid_ga(false, false, 1),
+         grid_ga(true, false, 1),
+         grid_ga(false, true, 1),
+         grid_ga(true, true, 1),
+        Rc::new(AlgoConfig {
+            elitism: Rc::new(GreedySelection{}),
+            replacement_selection: Rc::new(map_elite::MAPElite{})
+        })]
 }
 
 fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,Vec<usize>,DiscreteHyperparameters>> {
@@ -387,12 +393,12 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
 
 
 fn main() {
-    let file_prefix = "test_all";
+    let file_prefix = "long";
 
     let common_config = CommonParameters {
         population_size: 2500,
         number_of_repetitions: 1,
-        number_of_iterations: 10000
+        number_of_iterations: 1000000
     };
 
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
