@@ -54,9 +54,9 @@ impl<T: Clone> Mutator<TSPValue<T>, DiscreteHyperparameters> for TSPMutator {
 
         while rng.gen::<f64>() < hyperparameters.mutation_chance {
 
-            let index_a = rng.gen_range(0,cities.len());
+            let index_a = rng.gen_range(1,cities.len());
 
-            let mut index_b= rng.gen_range(0, cities.len());
+            let mut index_b= rng.gen_range(1, cities.len());
             while index_b == index_a {
                 index_b = rng.gen_range(0, cities.len());
             }
@@ -99,7 +99,7 @@ impl Parametrized for TSPFeatureMapper {
 
 impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>,TSPInstance<T>> for TSPFeatureMapper {
     fn number_of_possible_features(&self, problem: &TSPInstance<T>) -> usize {
-        let mut n = problem.number_of_cities;
+        let mut n = problem.number_of_cities-1;
         let mut r = 1;
         for _i in 0..self.number_cities_mapped {
             r *= n;
@@ -110,7 +110,7 @@ impl<T: Hash + Clone + Eq> FeatureMapper<TSPValue<T>, Vec<T>,TSPInstance<T>> for
     }
 
     fn project(&self, genome: &TSPValue<T>) -> Vec<T> {
-        genome.permutation[..self.number_cities_mapped].to_vec()
+        genome.permutation[1..(self.number_cities_mapped+1)].to_vec()
     }
 
     fn default_features(&self) -> Vec<T> {
