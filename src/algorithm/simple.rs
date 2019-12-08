@@ -47,7 +47,7 @@ impl<V: Clone + 'static,P: 'static,F: 'static,H: Clone + 'static> ReplacementSel
             problem_config: Rc<ProblemConfig<V,P,F,H>>) -> Box<dyn UpdatableSolver<V>> {
         let generator = &problem_config.random_organism_generator;
 
-        let mut gr = vec![];
+        let mut gr = Vec::with_capacity(pop_size);
         for _i in 0..pop_size {
             gr.push(generator.generate_organism(problem.as_ref()));
         }
