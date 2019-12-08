@@ -53,6 +53,7 @@ use algorithm::selection::GreedySelection;
 use algorithm::simple::SimpleReplacement;
 use algorithm::grid_ga;
 use algorithm::map_elite;
+use algorithm::simple_adaptive;
 use algorithm::util::sorted_scores;
 
 use rand::{thread_rng, Rng};
@@ -376,7 +377,22 @@ fn all_algos_configs<V: 'static + Clone + PartialEq,P: 'static ,F: 'static + Eq 
         Rc::new(AlgoConfig {
             elitism: Rc::new(GreedySelection{}),
             replacement_selection: Rc::new(map_elite::MAPElite{})
-        })]
+        })
+    ]
+}
+
+fn all_algo_config_with_adaptive<V: 'static + Clone + PartialEq,
+    P: 'static ,
+    F: 'static + Eq + Clone + Hash>() -> Vec<Rc<AlgoConfig<V,P,F,DiscreteHyperparameters>>> {
+    let mut v = all_algos_configs();
+    v.push(Rc::new(AlgoConfig {
+        elitism: Rc::new(GreedySelection{}),
+        replacement_selection: Rc::new(simple_adaptive::SimpleAdaptive{
+            prior_a: 1,
+            prior_b: 1
+        })
+    }));
+    return v;
 }
 
 fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,Vec<usize>,DiscreteHyperparameters>> {
@@ -406,7 +422,7 @@ fn main() {
     let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
-        algorithms: all_algos_configs::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>, DiscreteHyperparameters>()
+        algorithms: all_algo_config_with_adaptive::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>>()
     })];
 
     let mut total_number_repetitions = 0;

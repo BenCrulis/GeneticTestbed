@@ -3,6 +3,7 @@ pub mod selection;
 pub mod simple;
 pub mod grid_ga;
 pub mod map_elite;
+pub mod simple_adaptive;
 pub mod mutation;
 pub mod config;
 pub mod util;
