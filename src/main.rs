@@ -415,6 +415,8 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
 }
 
 fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, RastriginFeature, ContinuousHyperparameters>> {
+    let mut_size = 0.5;
+
     Rc::new(ProblemConfig {
         random_organism_generator: Rc::new(RastriginGenerator{}),
         problem_instance_generator: Rc::new(Rastrigin{
@@ -425,11 +427,11 @@ fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, Ras
         }),
         feature_mapper: Rc::new(RastriginMapper {
             resolution: 4,
-            number_of_dimensions: 5,
+            number_of_dimensions: 3,
             max_abs_val: 5.12
         }),
-        constant_hyperparameters: ContinuousHyperparameters { mutation_chance: 0.5, mutation_size: 0.1 },
-        hyperparameter_mapper: Rc::new(ContinuousSpatialMapper{ mean_mutation_size: 0.1 }),
+        constant_hyperparameters: ContinuousHyperparameters { mutation_chance: 0.5, mutation_size: mut_size },
+        hyperparameter_mapper: Rc::new(ContinuousSpatialMapper{ mean_mutation_size: mut_size }),
         scorer: Rc::new(RegRastriginScorer{}),
         mutator: Rc::new(RastriginMutator{})
     })

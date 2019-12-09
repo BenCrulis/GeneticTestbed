@@ -139,10 +139,9 @@ impl FeatureMapper<RastriginValue, RastriginFeature, Rastrigin> for RastriginMap
         let mut features = Vec::with_capacity(self.number_of_dimensions);
         for x in &genome.value[..self.number_of_dimensions] {
             let x_norm = x/self.max_abs_val;
-            let int_x = (x_norm as f64 *self.resolution as f64 *0.5) as isize;
+            let int_x = (x_norm as f64 * self.resolution as f64 * 0.5) as isize;
             features.push(int_x);
         }
-
         return RastriginFeature {
             bin_coords: features
         }
@@ -171,7 +170,8 @@ impl OrganismGenerator<RastriginValue, Rastrigin> for RastriginGenerator {
         let mut rng = thread_rng();
 
         for d in 0..problem.nb_dimensions {
-            new_val.push(rng.gen_range(-problem.max_abs_val, problem.max_abs_val));
+            //new_val.push(rng.gen_range(-problem.max_abs_val, problem.max_abs_val));
+            new_val.push(problem.max_abs_val);
         }
 
         return RastriginValue {
