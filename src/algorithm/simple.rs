@@ -67,45 +67,36 @@ impl<V: Clone,P,F,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,F,H> {
         let size = self.organisms.len();
         let mut rng = thread_rng();
         let index_a = rng.gen_range(0,size);
-        let mut index_b = rng.gen_range(0, size);
+        let mut index_replace = rng.gen_range(0, size);
 
-        while index_b == index_a {
-            index_b = rng.gen_range(0, size);
+        while index_replace == index_a {
+            index_replace = rng.gen_range(0, size);
         }
 
-        let score_a;
+        let score;
+        let score_replace;
 
-        {
+        let org = {
             let org_a= self.organisms.get_mut(index_a).unwrap();
-            score_a = org_a.score_with_cache(scorer.as_ref(), self.problem.as_ref());
 
-        }
+            let mut org_b = org_a.clone();
 
-        let score_b;
+            org_b.mutate(self.problem_config.mutator.as_ref(), &self.problem_config.constant_hyperparameters);
+
+            score = org_b.score_with_cache(scorer.as_ref(), self.problem.as_ref());
+            org_b
+        };
 
         {
-            let org_b = self.organisms.get_mut(index_b).unwrap();
-            score_b = org_b.score_with_cache(scorer.as_ref(), self.problem.as_ref());
+            let org_c = self.organisms.get_mut(index_replace).unwrap();
+            score_replace = org_c.score_with_cache(scorer.as_ref(), self.problem.as_ref());
         }
 
-        let keep_first = self.elitism.choose(score_a, score_b);
+        let keep_first = self.elitism.choose(score, score_replace);
 
-        let mut to_replace = index_a;
-        let mut to_keep = index_b;
         if keep_first {
-            to_replace = index_b;
-            to_keep = index_a;
+            self.organisms[index_replace] = org;
         }
-
-        let mut new_org: Organism<V> = self.organisms.get(to_keep)
-            .unwrap()
-            .clone();
-
-        new_org.mutate(self.problem_config.mutator.as_ref(),
-                    &self.problem_config.constant_hyperparameters);
-
-        self.organisms[to_replace] = new_org;
-
 
         return self.organisms.clone();
     }
