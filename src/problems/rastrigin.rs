@@ -37,7 +37,7 @@ pub fn regularized_rastrigin(b: f64, x: &[f64]) -> f64 {
 
     for v in x {
         sum += v * v - (2.0 * PI * *v + PI).cos();
-        reg_sum += -v*v;
+        reg_sum -= v*v;
     }
 
     let reg = (reg_sum/b).exp();
@@ -86,7 +86,7 @@ pub struct RegRastriginScorer {}
 
 impl Scorer<RastriginValue, Rastrigin> for RegRastriginScorer {
     fn score(&self, genome: &RastriginValue, problem: &Rastrigin) -> f64 {
-        regularized_rastrigin(problem.b, genome.value.as_slice())
+        return regularized_rastrigin(problem.b, genome.value.as_slice());
     }
 }
 
