@@ -436,7 +436,7 @@ fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, Ras
 }
 
 fn main() {
-    let file_prefix = "long";
+    let file_prefix = "test";
 
     let common_config = CommonParameters {
         population_size: 2500,
@@ -460,7 +460,7 @@ fn main() {
 
     for conf in &configs {
         let common_conf = conf.get_common_config();
-        total_number_repetitions = common_conf.number_of_repetitions*conf.number_of_algorithms() as u64;
+        total_number_repetitions += common_conf.number_of_repetitions*conf.number_of_algorithms() as u64;
     }
 
     println!("Computing {} runs", total_number_repetitions);
