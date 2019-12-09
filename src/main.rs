@@ -70,6 +70,7 @@ use std::fs::File;
 use std::path::Path;
 use std::io::{BufWriter, LineWriter, Write};
 use crate::problems::Hyperparameter;
+use crate::problems::rastrigin::{RastriginValue, RastriginFeature, RastriginGenerator, Rastrigin, RastriginMapper, RastriginMutator, RegRastriginScorer};
 
 #[derive(Clone, Debug)]
 struct Iteration {
@@ -122,6 +123,7 @@ impl Iteration {
 trait Config {
     fn get_problem_config_parameters(&self) -> serde_json::Value;
     fn get_common_config(&self) -> CommonParameters;
+    fn get_problem_name(&self) -> String;
     fn number_of_algorithms(&self) -> usize;
     fn execute(&self) -> Box<dyn Iterator<Item=Box<dyn Iterator<Item=Iteration>>>>;
 }
@@ -235,13 +237,13 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,
 
 impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
     fn get_problem_config_parameters(&self) -> serde_json::Value {
-        // TODO
         println!("Getting MyConfig parameters");
         let common_params = self.common_config.parameters();
         let mut algo_configs = Vec::new();
 
         for (i,algo) in self.algorithms.iter().enumerate() {
             let mut algo_config = Map::new();
+            algo_config.insert("algorithm name".to_string(), algo.replacement_selection.name().into());
             algo_config.insert("algorithm index".to_string(), int_param(i as i64));
             algo_config.insert("elitism".to_string(), serde_json::Value::String(algo.elitism.name()));
             algo_config.insert("algorithm config".to_string(), algo.replacement_selection.parameters());
@@ -258,6 +260,10 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
 
     fn get_common_config(&self) -> CommonParameters {
         *self.common_config
+    }
+
+    fn get_problem_name(&self) -> String {
+        self.problem_config.problem_instance_generator.name()
     }
 
     fn number_of_algorithms(&self) -> usize {
@@ -408,7 +414,26 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
     })
 }
 
-
+fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, RastriginFeature, ContinuousHyperparameters>> {
+    Rc::new(ProblemConfig {
+        random_organism_generator: Rc::new(RastriginGenerator{}),
+        problem_instance_generator: Rc::new(Rastrigin{
+            a: 10.0,
+            b: 0.0,
+            max_abs_val: 5.0,
+            nb_dimensions: 100
+        }),
+        feature_mapper: Rc::new(RastriginMapper {
+            resolution: 10,
+            number_of_dimensions: 2,
+            max_abs_val: 5.0
+        }),
+        constant_hyperparameters: ContinuousHyperparameters { mutation_chance: 0.5, mutation_size: 0.1 },
+        hyperparameter_mapper: Rc::new(SpatialMapper { number_of_additional_dimensions: 0 }),
+        scorer: Rc::new(RegRastriginScorer{}),
+        mutator: Rc::new(RastriginMutator{})
+    })
+}
 
 fn main() {
     let file_prefix = "long";
@@ -419,11 +444,17 @@ fn main() {
         number_of_iterations: 100000
     };
 
-    let configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
+    let mut configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
         algorithms: all_algo_config_with_adaptive::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>>()
     })];
+
+    configs.push(Rc::new(MyConfig {
+        problem_config: rastrigin_problem_config(),
+        common_config: Rc::new(common_config),
+        algorithms: all_algos_configs()
+    }));
 
     let mut total_number_repetitions = 0;
 
@@ -440,8 +471,11 @@ fn main() {
     for (config_index, config) in configs.iter().enumerate() {
         let p_params = config.get_problem_config_parameters();
         println!("Config n°{}:\n{:?}", config_index ,p_params);
+
+        let problem_name = config.get_problem_name().replace("/","_");
+
         let file = std::fs::File::create(
-            Path::new(format!("{}_results_{}.csv", file_prefix, config_index).as_str()));
+            Path::new(format!("{}_{}_results_{}.csv", file_prefix, problem_name, config_index).as_str()));
         let mut writer = file.unwrap();
 
         let written = writer.write_all("\"".as_bytes()).and(

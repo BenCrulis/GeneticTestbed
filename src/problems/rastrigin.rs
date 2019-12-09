@@ -45,7 +45,7 @@ pub fn regularized_rastrigin(b: f64, x: &[f64]) -> f64 {
     return sum*reg/n;
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct RastriginValue {
     pub value: Vec<f64>
 }
