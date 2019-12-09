@@ -69,7 +69,7 @@ use serde::{Serialize, Deserialize, Serializer};
 use std::fs::File;
 use std::path::Path;
 use std::io::{BufWriter, LineWriter, Write};
-use crate::problems::Hyperparameter;
+use crate::problems::{Hyperparameter, ContinuousSpatialMapper};
 use crate::problems::rastrigin::{RastriginValue, RastriginFeature, RastriginGenerator, Rastrigin, RastriginMapper, RastriginMutator, RegRastriginScorer};
 
 #[derive(Clone, Debug)]
@@ -419,17 +419,17 @@ fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, Ras
         random_organism_generator: Rc::new(RastriginGenerator{}),
         problem_instance_generator: Rc::new(Rastrigin{
             a: 10.0,
-            b: 0.0,
+            b: 1000.0,
             max_abs_val: 5.0,
-            nb_dimensions: 100
+            nb_dimensions: 10
         }),
         feature_mapper: Rc::new(RastriginMapper {
-            resolution: 10,
-            number_of_dimensions: 2,
-            max_abs_val: 5.0
+            resolution: 4,
+            number_of_dimensions: 5,
+            max_abs_val: 5.12
         }),
         constant_hyperparameters: ContinuousHyperparameters { mutation_chance: 0.5, mutation_size: 0.1 },
-        hyperparameter_mapper: Rc::new(SpatialMapper { number_of_additional_dimensions: 0 }),
+        hyperparameter_mapper: Rc::new(ContinuousSpatialMapper{ mean_mutation_size: 0.1 }),
         scorer: Rc::new(RegRastriginScorer{}),
         mutator: Rc::new(RastriginMutator{})
     })
@@ -444,11 +444,15 @@ fn main() {
         number_of_iterations: 100000
     };
 
-    let mut configs: Vec<Rc<dyn Config>> = vec![Rc::new(MyConfig {
+    let mut configs: Vec<Rc<dyn Config>> = Vec::new();
+
+    /*
+    configs.push(Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
         algorithms: all_algo_config_with_adaptive::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>>()
-    })];
+    }));
+    */
 
     configs.push(Rc::new(MyConfig {
         problem_config: rastrigin_problem_config(),
