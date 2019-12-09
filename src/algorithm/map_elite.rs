@@ -10,6 +10,7 @@ use rand::seq::IteratorRandom;
 use std::hash::Hash;
 use std::collections::hash_map::Entry;
 use rand::seq::SliceRandom;
+use serde_json::{Value, Map};
 
 pub struct MAPElite {}
 
@@ -19,7 +20,16 @@ impl Named for MAPElite {
     }
 }
 
-impl Parametrized for MAPElite {}
+impl Parametrized for MAPElite {
+    fn parameters(&self) -> Value {
+        let mut config = Map::new();
+        config.insert("use spatial grid".to_string(), false.into());
+        config.insert("use spatial hyperparameters".to_string(), false.into());
+        config.insert("use features".to_string(), true.into());
+
+        return Value::Object(config);
+    }
+}
 
 impl<V: 'static + Clone ,P: 'static,F: 'static + Clone + Eq + Hash,H: 'static> ReplacementSelection<V,P,F,H> for MAPElite {
     fn initialize_solver(&self,

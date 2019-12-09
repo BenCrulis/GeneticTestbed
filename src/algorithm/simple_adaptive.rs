@@ -28,6 +28,9 @@ impl Parametrized for SimpleAdaptive {
         let mut hm = Map::new();
         hm.insert("prior a".to_string(), self.prior_a.into());
         hm.insert("prior b".to_string(), self.prior_b.into());
+        hm.insert("use spatial grid".to_string(), false.into());
+        hm.insert("use spatial hyperparameters".to_string(), false.into());
+        hm.insert("use features".to_string(), false.into());
         return Value::Object(hm);
     }
 }
