@@ -31,7 +31,7 @@ impl<T: Eq> Metric for TSPValue<T> {
         let mut d = 0;
 
         for (x,y) in self.permutation.iter().zip(other.permutation.iter()) {
-            if x.eq(y) {
+            if x.ne(y) {
                 d += 1;
             }
         }

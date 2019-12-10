@@ -16,7 +16,7 @@ impl Metric for OneMaxValue {
     fn distance_to(&self, other: &Self) -> f64 {
         self.values.iter()
             .zip(other.values.iter())
-            .map(|(x,y)| if x.eq(y) {1} else {0})
+            .map(|(x,y)| if x.ne(y) {1} else {0})
             .sum::<u16>() as f64
     }
 }
