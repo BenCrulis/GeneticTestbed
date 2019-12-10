@@ -89,8 +89,8 @@ struct Iteration {
     number_of_organisms: usize,
     pop_score_variance: f64,
     generations: f64,
-    mean_genetic_distance: f64,
-    genetic_variance: f64
+    mean_genetic_distance: Option<f64>,
+    genetic_variance: Option<f64>
 }
 
 impl Iteration {
@@ -126,8 +126,8 @@ impl Iteration {
             self.number_of_organisms.to_string(),
             self.pop_score_variance.to_string(),
             self.generations.to_string(),
-            self.mean_genetic_distance.to_string(),
-            self.genetic_variance.to_string()
+            self.mean_genetic_distance.map_or("".to_string(), |x| x.to_string()),
+            self.genetic_variance.map_or("".to_string(), |x| x.to_string())
         ])
     }
 }
@@ -159,6 +159,7 @@ struct CommonParameters {
     population_size: usize,
     number_of_repetitions: u64,
     number_of_iterations: u64,
+    genome_stats_gap: u64
 }
 
 impl Parametrized for CommonParameters {
@@ -320,12 +321,23 @@ impl<V: Metric,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
             let organisms = self.updatable_solver.update();
             let number_of_organisms = organisms.len();
 
-            let distances: Vec<f64> = organisms.iter().cartesian_product(organisms.iter()).map(|(x,y)| x.distance_to(y)).collect();
+            let mut mean_genetic_distance = None;
+            let mut genetic_variance = None;
+            if self.i % self.my_config_it.my_config.common_config.genome_stats_gap == 0 {
 
-            let mean_genetic_distance = mean(&distances);
-            let genetic_variance = if number_of_organisms > 1 {
-                variance(&distances, Some(mean_genetic_distance))
-            } else { 0.0 };
+                let mut distances: Vec<f64> = Vec::with_capacity(number_of_organisms * (number_of_organisms - 1) / 2);
+                for i in 0..number_of_organisms {
+                    for j in (i + 1)..number_of_organisms {
+                        distances.push(organisms[i].distance_to(&organisms[j]));
+                    }
+                }
+
+                if number_of_organisms > 0 {
+                    mean_genetic_distance = Some(mean(&distances));
+                } else if number_of_organisms > 1 {
+                    genetic_variance = Some(variance(&distances, mean_genetic_distance));
+                }
+            }
 
             let duration = Instant::now().duration_since(before);
 
@@ -465,7 +477,8 @@ fn main() {
     let common_config = CommonParameters {
         population_size: 2500,
         number_of_repetitions: 1,
-        number_of_iterations: 100000
+        number_of_iterations: 100000,
+        genome_stats_gap: 100
     };
 
     let mut configs: Vec<Rc<dyn Config>> = Vec::new();
