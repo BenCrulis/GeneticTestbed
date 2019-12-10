@@ -320,7 +320,6 @@ impl<V: Metric,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
             let number_of_organisms = organisms.len();
 
             let mut mean_genetic_distance: Option<f64> = None;
-            let mut genetic_variance: Option<f64> = None;
             if self.i % self.my_config_it.my_config.common_config.genome_stats_gap == 0 {
 
                 let mut distances: Vec<f64> = Vec::with_capacity(number_of_organisms * (number_of_organisms - 1) / 2);
