@@ -330,7 +330,10 @@ impl<V: Metric,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
                 }
 
                 if number_of_organisms > 0 {
-                    mean_genetic_distance = Some(mean(&distances));
+                    let me = mean(&distances);
+                    if me.is_finite() {
+                        mean_genetic_distance = Some(me);
+                    }
                 }
             }
 
