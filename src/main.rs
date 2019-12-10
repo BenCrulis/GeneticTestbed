@@ -90,8 +90,7 @@ struct Iteration {
     number_of_organisms: usize,
     pop_score_variance: f64,
     generations: f64,
-    mean_genetic_distance: Option<f64>,
-    genetic_variance: Option<f64>
+    mean_genetic_distance: Option<f64>
 }
 
 impl Iteration {
@@ -109,8 +108,7 @@ impl Iteration {
             "number of organisms",
             "variance",
             "generations",
-            "mean genetic distance",
-            "genetic variance"
+            "mean genetic distance"
         ])
     }
     fn write_row(&self, writer: &mut csv::Writer<File>) -> Result<(),csv::Error> {
@@ -127,8 +125,7 @@ impl Iteration {
             self.number_of_organisms.to_string(),
             self.pop_score_variance.to_string(),
             self.generations.to_string(),
-            self.mean_genetic_distance.map_or("".to_string(), |x| x.to_string()),
-            self.genetic_variance.map_or("".to_string(), |x| x.to_string())
+            self.mean_genetic_distance.map_or("".to_string(), |x| x.to_string())
         ])
     }
 }
@@ -335,8 +332,6 @@ impl<V: Metric,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 
                 if number_of_organisms > 0 {
                     mean_genetic_distance = Some(mean(&distances));
-                } else if number_of_organisms > 1 {
-                    genetic_variance = Some(variance(&distances, mean_genetic_distance));
                 }
             }
 
@@ -372,8 +367,7 @@ impl<V: Metric,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
                 number_of_organisms,
                 pop_score_variance: vari,
                 generations: self.i as f64 / number_of_organisms as f64,
-                mean_genetic_distance,
-                genetic_variance
+                mean_genetic_distance
             };
 
             self.i += 1;
