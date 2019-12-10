@@ -74,6 +74,7 @@ use std::io::{BufWriter, LineWriter, Write};
 use crate::problems::{Hyperparameter, ContinuousSpatialMapper};
 use crate::problems::rastrigin::{RastriginValue, RastriginFeature, RastriginGenerator, Rastrigin, RastriginMapper, RastriginMutator, RegRastriginScorer};
 use crate::organism::Metric;
+use crate::problems::onemax::{OneMaxValue, OneMax, OneMaxGenerator, OneMaxMapper, OneMaxScorer, OneMaxMutator};
 
 #[derive(Clone, Debug)]
 struct Iteration {
@@ -471,6 +472,18 @@ fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, Ras
     })
 }
 
+fn onemax_config() -> Rc<ProblemConfig<OneMaxValue, OneMax, Vec<u16>, DiscreteHyperparameters>> {
+    Rc::new(ProblemConfig {
+        random_organism_generator: Rc::new(OneMaxGenerator{}),
+        problem_instance_generator: Rc::new(OneMax { size: 1000 }),
+        feature_mapper: Rc::new(OneMaxMapper{ number_of_bits: 4 }),
+        constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.5 },
+        hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 }),
+        scorer: Rc::new(OneMaxScorer{}),
+        mutator: Rc::new(OneMaxMutator{})
+    })
+}
+
 fn main() {
     let file_prefix = "test";
 
@@ -495,6 +508,12 @@ fn main() {
         problem_config: rastrigin_problem_config(),
         common_config: Rc::new(common_config),
         algorithms: all_algos_configs()
+    }));
+
+    configs.push(Rc::new(MyConfig {
+        problem_config: onemax_config(),
+        common_config: Rc::new(common_config),
+        algorithms: all_algo_config_with_adaptive()
     }));
 
     let mut total_number_repetitions = 0;

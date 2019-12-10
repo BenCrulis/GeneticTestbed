@@ -1,5 +1,6 @@
 pub mod rastrigin;
 pub mod travelling_salesman;
+pub mod onemax;
 
 use crate::common::Named;
 use crate::common::Parametrized;
