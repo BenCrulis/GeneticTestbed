@@ -8,6 +8,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate statistical;
 extern crate chrono;
+extern crate itertools;
 
 use std::vec::Vec;
 use std::time::{Instant, SystemTime, Duration};
@@ -26,6 +27,7 @@ use std::process::Output;
 use std::collections::hash_map::RandomState;
 use std::iter::{Cycle};
 use std::rc::Rc;
+use itertools::Itertools;
 
 use common::Named;
 use common::Parametrized;
@@ -71,6 +73,7 @@ use std::path::Path;
 use std::io::{BufWriter, LineWriter, Write};
 use crate::problems::{Hyperparameter, ContinuousSpatialMapper};
 use crate::problems::rastrigin::{RastriginValue, RastriginFeature, RastriginGenerator, Rastrigin, RastriginMapper, RastriginMutator, RegRastriginScorer};
+use crate::organism::Metric;
 
 #[derive(Clone, Debug)]
 struct Iteration {
@@ -85,7 +88,9 @@ struct Iteration {
     median_score: f64,
     number_of_organisms: usize,
     pop_score_variance: f64,
-    generations: f64
+    generations: f64,
+    mean_genetic_distance: f64,
+    genetic_variance: f64
 }
 
 impl Iteration {
@@ -102,7 +107,9 @@ impl Iteration {
             "median score",
             "number of organisms",
             "variance",
-            "generations"
+            "generations",
+            "mean genetic distance",
+            "genetic variance"
         ])
     }
     fn write_row(&self, writer: &mut csv::Writer<File>) -> Result<(),csv::Error> {
@@ -118,7 +125,9 @@ impl Iteration {
             self.median_score.to_string(),
             self.number_of_organisms.to_string(),
             self.pop_score_variance.to_string(),
-            self.generations.to_string()
+            self.generations.to_string(),
+            self.mean_genetic_distance.to_string(),
+            self.genetic_variance.to_string()
         ])
     }
 }
@@ -202,7 +211,7 @@ impl<V,P,F,H> Clone for MyConfigIt<V,P,F,H> {
 }
 
 
-impl<V: 'static,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,H> {
+impl<V: 'static + Metric,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,H> {
     type Item = Box<dyn Iterator<Item=Iteration>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -238,7 +247,7 @@ impl<V: 'static,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,
     }
 }
 
-impl<V: 'static,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
+impl<V: 'static + Metric,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
     fn get_problem_config_parameters(&self) -> serde_json::Value {
         println!("Getting MyConfig parameters");
         let common_params = self.common_config.parameters();
@@ -298,7 +307,7 @@ struct AlgorithmState<V,P,F,H> {
     i: u64
 }
 
-impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
+impl<V: Metric,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
     type Item = Iteration;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -309,10 +318,17 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
             let before = Instant::now();
 
             let organisms = self.updatable_solver.update();
+            let number_of_organisms = organisms.len();
+
+            let distances: Vec<f64> = organisms.iter().cartesian_product(organisms.iter()).map(|(x,y)| x.distance_to(y)).collect();
+
+            let mean_genetic_distance = mean(&distances);
+            let genetic_variance = if number_of_organisms > 1 {
+                variance(&distances, Some(mean_genetic_distance))
+            } else { 0.0 };
 
             let duration = Instant::now().duration_since(before);
 
-            let number_of_organisms = organisms.len();
 
             /*
             println!("Parameters: {}\nNumber of organism: {}",
@@ -342,7 +358,9 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
                 median_score: median(sorted_score.as_slice()),
                 number_of_organisms,
                 pop_score_variance: vari,
-                generations: self.i as f64 / number_of_organisms as f64
+                generations: self.i as f64 / number_of_organisms as f64,
+                mean_genetic_distance,
+                genetic_variance
             };
 
             self.i += 1;
