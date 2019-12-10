@@ -10,7 +10,7 @@ use rand::{thread_rng, Rng};
 use rand_distr::Normal;
 use crate::features::FeatureMapper;
 use num::pow;
-use crate::organism::OrganismGenerator;
+use crate::organism::{OrganismGenerator, Metric};
 
 pub fn rastrigin(a: f64, x: &[f64]) -> f64 {
     let n: f64 = x.len() as f64;
@@ -48,6 +48,16 @@ pub fn regularized_rastrigin(b: f64, x: &[f64]) -> f64 {
 #[derive(Clone, PartialEq, Debug)]
 pub struct RastriginValue {
     pub value: Vec<f64>
+}
+
+impl Metric for RastriginValue {
+    fn distance_to(&self, other: &Self) -> f64 {
+        self.value.iter()
+            .zip(other.value.iter())
+            .map(|(x,y)| (x-y).powf(2.0))
+            .sum::<f64>()
+            .sqrt()
+    }
 }
 
 #[derive(Copy, Clone)]

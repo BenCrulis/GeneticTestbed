@@ -19,10 +19,24 @@ use std::rc::Rc;
 use crate::scoring::Scorer;
 use crate::algorithm::mutation::Mutator;
 use serde_json::{Value, Map};
+use crate::organism::organism::Metric;
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash)]
 pub struct TSPValue<T> {
     pub permutation: Vec<T>
+}
+
+impl<T: Eq> Metric for TSPValue<T> {
+    fn distance_to(&self, other: &Self) -> f64 {
+        let mut d = 0;
+
+        for (x,y) in self.permutation[1..].iter().zip(other.permutation[1..].iter()) {
+            if x.eq(y) {
+                d += 1;
+            }
+        }
+        return d as f64;
+    }
 }
 
 #[derive(Copy, Clone)]

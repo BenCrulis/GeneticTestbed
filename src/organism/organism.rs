@@ -44,6 +44,15 @@ impl<V: PartialEq> Organism<V> {
     }
 }
 
+pub trait Metric {
+    fn distance_to(&self, other: &Self) -> f64;
+}
+
+impl<V: Metric> Metric for Organism<V> {
+    fn distance_to(&self, other: &Organism<V>) -> f64 {
+        self.genotype.distance_to(&other.genotype)
+    }
+}
 
 pub trait OrganismGenerator<V,P>: Named + Parametrized {
     fn generate(&self, problem: &P) -> V;
