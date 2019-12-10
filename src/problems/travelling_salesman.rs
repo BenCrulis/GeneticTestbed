@@ -30,7 +30,7 @@ impl<T: Eq> Metric for TSPValue<T> {
     fn distance_to(&self, other: &Self) -> f64 {
         let mut d = 0;
 
-        for (x,y) in self.permutation[1..].iter().zip(other.permutation[1..].iter()) {
+        for (x,y) in self.permutation.iter().zip(other.permutation.iter()) {
             if x.eq(y) {
                 d += 1;
             }
