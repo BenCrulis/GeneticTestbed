@@ -85,6 +85,7 @@ struct Iteration {
     median_score: f64,
     number_of_organisms: usize,
     pop_score_variance: f64,
+    generations: f64
 }
 
 impl Iteration {
@@ -100,7 +101,8 @@ impl Iteration {
             "mean score",
             "median score",
             "number of organisms",
-            "variance"
+            "variance",
+            "generations"
         ])
     }
     fn write_row(&self, writer: &mut csv::Writer<File>) -> Result<(),csv::Error> {
@@ -115,7 +117,8 @@ impl Iteration {
             self.mean_score.to_string(),
             self.median_score.to_string(),
             self.number_of_organisms.to_string(),
-            self.pop_score_variance.to_string()
+            self.pop_score_variance.to_string(),
+            self.generations.to_string()
         ])
     }
 }
@@ -338,7 +341,8 @@ impl<V,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
                 mean_score: mean_val,
                 median_score: median(sorted_score.as_slice()),
                 number_of_organisms,
-                pop_score_variance: vari
+                pop_score_variance: vari,
+                generations: self.i as f64 / number_of_organisms as f64
             };
 
             self.i += 1;
@@ -448,13 +452,13 @@ fn main() {
 
     let mut configs: Vec<Rc<dyn Config>> = Vec::new();
 
-    /*
+
     configs.push(Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
         algorithms: all_algo_config_with_adaptive::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>>()
     }));
-    */
+
 
     configs.push(Rc::new(MyConfig {
         problem_config: rastrigin_problem_config(),
