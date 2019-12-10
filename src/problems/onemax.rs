@@ -65,7 +65,7 @@ impl Mutator<OneMaxValue, DiscreteHyperparameters> for OneMaxMutator {
         let mut mutated = false;
         while rng.gen::<f64>() < hyperparameters.mutation_chance {
             let i = rng.gen_range(0, genome.values.len());
-            genome.values[i] = if genome.values.len() > 0 {0} else {1};
+            genome.values[i] = if genome.values[i] == 0 {1} else {0};
             mutated = true;
         }
 
