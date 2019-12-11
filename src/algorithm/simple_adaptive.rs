@@ -35,12 +35,12 @@ impl Parametrized for SimpleAdaptive {
     }
 }
 
-impl<V: 'static + Clone, P: 'static,F: 'static> ReplacementSelection<V,P,F,DiscreteHyperparameters> for SimpleAdaptive {
+impl<V: 'static + Clone, P: 'static> ReplacementSelection<V,P,DiscreteHyperparameters> for SimpleAdaptive {
     fn initialize_solver(&self,
                          pop_size: usize,
                          problem: Rc<P>,
                          elitism: Rc<dyn Elitism>,
-                         problem_config: Rc<ProblemConfig<V, P, F, DiscreteHyperparameters>>) -> Box<dyn UpdatableSolver<V>> {
+                         problem_config: Rc<ProblemConfig<V, P, DiscreteHyperparameters>>) -> Box<dyn UpdatableSolver<V>> {
         let mut pop = Vec::with_capacity(pop_size);
 
         for _i in 0..pop_size {
@@ -130,14 +130,14 @@ impl<V> AdaptiveOrg<V> {
     }
 }
 
-pub struct SimpleAdaptiveExec<V,P,F> {
+pub struct SimpleAdaptiveExec<V,P> {
     problem: Rc<P>,
     organisms: Vec<AdaptiveOrg<V>>,
-    problem_config: Rc<ProblemConfig<V,P,F,DiscreteHyperparameters>>,
+    problem_config: Rc<ProblemConfig<V,P,DiscreteHyperparameters>>,
     elitism: Rc<dyn Elitism>
 }
 
-impl<V: Clone,P,F> UpdatableSolver<V> for SimpleAdaptiveExec<V,P,F> {
+impl<V: Clone,P> UpdatableSolver<V> for SimpleAdaptiveExec<V,P> {
     fn update(&mut self) -> Vec<Organism<V>> {
 
         let scorer = &self.problem_config.scorer;

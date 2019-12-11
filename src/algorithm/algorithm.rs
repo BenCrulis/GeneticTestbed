@@ -10,13 +10,13 @@ use crate::scoring::Scorer;
 use crate::algorithm::config::ProblemConfig;
 
 
-pub trait ReplacementSelection<V,P,F,H>: Named + Parametrized {
+pub trait ReplacementSelection<V,P,H>: Named + Parametrized {
     fn initialize_solver(
         &self,
         pop_size: usize,
         problem: Rc<P>,
         elitism: Rc<dyn Elitism>,
-        problem_config: Rc<ProblemConfig<V,P,F,H>>) -> Box<dyn UpdatableSolver<V>>;
+        problem_config: Rc<ProblemConfig<V,P,H>>) -> Box<dyn UpdatableSolver<V>>;
 
 }
 

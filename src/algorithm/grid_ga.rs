@@ -63,18 +63,18 @@ pub struct GeneralizedMAPEliteExec<V,P,F,H> {
     algo_config: GeneralizedMAPElite<V,F,P>,
     problem: Rc<P>,
     organisms: Grid<V,F>,
-    problem_config: Rc<ProblemConfig<V,P,F,H>>,
+    problem_config: Rc<ProblemConfig<V,P,H>>,
     elitism: Rc<dyn Elitism>
 }
 
 impl<V: Clone + 'static + PartialEq,
     P: 'static,
     F: Hash + Clone + Eq + 'static,
-    H: Hyperparameter + 'static + Clone> ReplacementSelection<V,P,F,H> for GeneralizedMAPElite<V,F,P> {
-    fn initialize_solver(&self, pop_size: usize, problem: Rc<P>, elitism: Rc<dyn Elitism>, problem_config: Rc<ProblemConfig<V, P, F, H>>) -> Box<dyn UpdatableSolver<V>> {
+    H: Hyperparameter + 'static + Clone> ReplacementSelection<V,P,H> for GeneralizedMAPElite<V,F,P> {
+    fn initialize_solver(&self, pop_size: usize, problem: Rc<P>, elitism: Rc<dyn Elitism>, problem_config: Rc<ProblemConfig<V, P, H>>) -> Box<dyn UpdatableSolver<V>> {
 
         let possibles_features = match &self.feature_mapper {
-            Some(fm) => problem_config.feature_mapper.number_of_possible_features(problem.as_ref()),
+            Some(fm) => fm.number_of_possible_features(problem.as_ref()),
             None => 1
         };
 

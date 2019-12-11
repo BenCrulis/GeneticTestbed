@@ -140,15 +140,15 @@ trait Config {
 
 
 trait AlgorithmExec<V,P,F,H> {
-    fn exec(&self, config: Rc<MyConfigIt<V,P,F,H>>) -> Box<dyn Iterator<Item=Iteration>>;
+    fn exec(&self, config: Rc<MyConfigIt<V,P,H>>) -> Box<dyn Iterator<Item=Iteration>>;
 }
 
 
 
 #[derive(Clone)]
-struct AlgoConfig<V,P,F,H> {
+struct AlgoConfig<V,P,H> {
     elitism: Rc<dyn Elitism>,
-    replacement_selection: Rc<dyn ReplacementSelection<V,P,F,H>>
+    replacement_selection: Rc<dyn ReplacementSelection<V,P,H>>
 }
 
 
@@ -175,12 +175,12 @@ impl Parametrized for CommonParameters {
 
 
 
-struct MyConfig<V,P,F,H> {
-    problem_config: Rc<ProblemConfig<V,P,F,H>>,
+struct MyConfig<V,P,H> {
+    problem_config: Rc<ProblemConfig<V,P,H>>,
     common_config: Rc<CommonParameters>,
-    algorithms: Vec<Rc<AlgoConfig<V,P,F,H>>>,
+    algorithms: Vec<Rc<AlgoConfig<V,P,H>>>,
 }
-impl<V,P,F,H> Clone for MyConfig<V,P,F,H> {
+impl<V,P,H> Clone for MyConfig<V,P,H> {
     fn clone(&self) -> Self {
         MyConfig {
             problem_config: self.problem_config.clone(),
@@ -191,14 +191,14 @@ impl<V,P,F,H> Clone for MyConfig<V,P,F,H> {
 }
 
 
-struct MyConfigIt<V,P,F,H> {
-    my_config: Rc<MyConfig<V,P,F,H>>,
+struct MyConfigIt<V,P,H> {
+    my_config: Rc<MyConfig<V,P,H>>,
     instance: Rc<P>,
     repetitions: u64,
     index_algo: usize
 }
 
-impl<V,P,F,H> Clone for MyConfigIt<V,P,F,H> {
+impl<V,P,H> Clone for MyConfigIt<V,P,H> {
     fn clone(&self) -> Self {
         MyConfigIt {
             my_config: self.my_config.clone(),
@@ -210,7 +210,7 @@ impl<V,P,F,H> Clone for MyConfigIt<V,P,F,H> {
 }
 
 
-impl<V: 'static + Metric,P: 'static,F: 'static,H: 'static> Iterator for MyConfigIt<V,P,F,H> {
+impl<V: 'static + Metric,P: 'static,H: 'static> Iterator for MyConfigIt<V,P,H> {
     type Item = Box<dyn Iterator<Item=Iteration>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -246,7 +246,7 @@ impl<V: 'static + Metric,P: 'static,F: 'static,H: 'static> Iterator for MyConfig
     }
 }
 
-impl<V: 'static + Metric,P: 'static,F: 'static,H: 'static> Config for MyConfig<V,P,F,H> {
+impl<V: 'static + Metric,P: 'static,H: 'static> Config for MyConfig<V,P,H> {
     fn get_problem_config_parameters(&self) -> serde_json::Value {
         println!("Getting MyConfig parameters");
         let common_params = self.common_config.parameters();
@@ -292,7 +292,7 @@ impl<V: 'static + Metric,P: 'static,F: 'static,H: 'static> Config for MyConfig<V
 }
 
 struct ProblemState<V,P,F,H> {
-    problem_config: Rc<ProblemConfig<V,P,F,H>>,
+    problem_config: Rc<ProblemConfig<V,P,H>>,
     common_config: Rc<CommonParameters>,
     algorithms: Vec<Rc<dyn AlgorithmExec<V,P,F,H>>>,
     instance: Rc<P>,
@@ -300,13 +300,13 @@ struct ProblemState<V,P,F,H> {
 }
 
 
-struct AlgorithmState<V,P,F,H> {
-    my_config_it: Rc<MyConfigIt<V,P,F,H>>,
+struct AlgorithmState<V,P,H> {
+    my_config_it: Rc<MyConfigIt<V,P,H>>,
     updatable_solver: Box<dyn UpdatableSolver<V>>,
     i: u64
 }
 
-impl<V: Metric,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
+impl<V: Metric,P,H> Iterator for AlgorithmState<V,P,H> {
     type Item = Iteration;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -380,7 +380,7 @@ impl<V: Metric,P,F,H> Iterator for AlgorithmState<V,P,F,H> {
 
 
 
-fn simple_metropolis_ga<V: Clone + 'static,P: 'static,F: 'static,H: Copy + 'static>() -> Rc<AlgoConfig<V,P,F,H>> {
+fn simple_ga<V: Clone + 'static,P: 'static,H: Copy + 'static>() -> Rc<AlgoConfig<V,P,H>> {
     return Rc::new(AlgoConfig {
         elitism: Rc::new(GreedySelection{}),
         replacement_selection: Rc::new(SimpleReplacement{})
@@ -394,7 +394,7 @@ fn grid_ga<V: 'static + Clone + PartialEq,
         feature_mapper: Option<Rc<dyn FeatureMapper<V,F,P>>>,
         use_hyperparameter_mapping: bool,
         number_of_spatial_dimensions: usize,
-        default_features: F) -> Rc<AlgoConfig<V,P,F,H>> {
+        default_features: F) -> Rc<AlgoConfig<V,P,H>> {
     return Rc::new(AlgoConfig {
         elitism: Rc::new(GreedySelection{}),
         replacement_selection: Rc::new(grid_ga::GeneralizedMAPElite {
@@ -411,14 +411,14 @@ fn all_algos_configs<V: 'static + Clone + PartialEq,
     P: 'static,
     F: 'static + Eq + Clone + Hash ,
     H: 'static + Hyperparameter + Copy + Clone>(feature_mapper: Rc<dyn FeatureMapper<V,F,P>>,
-            full_feature_mapper: Rc<dyn FeatureMapper<V,F,P>>) -> Vec<Rc<AlgoConfig<V,P,F,H>>> {
+            full_feature_mapper: Rc<dyn FeatureMapper<V,F,P>>) -> Vec<Rc<AlgoConfig<V,P,H>>> {
     let feat = full_feature_mapper.default_features();
-    vec![simple_metropolis_ga(),
+    vec![simple_ga(),
          grid_ga(None, false, 1, feat.clone()),
          grid_ga(Some(feature_mapper.clone()), false, 1, feat.clone()),
          grid_ga(None, true, 1, feat.clone()),
          grid_ga(Some(feature_mapper.clone()), true, 1, feat.clone()),
-        Rc::new(AlgoConfig {
+         Rc::new(AlgoConfig {
             elitism: Rc::new(GreedySelection{}),
             replacement_selection: Rc::new(map_elite::MAPElite{
                 feature_mapper: full_feature_mapper.clone()
@@ -430,7 +430,7 @@ fn all_algos_configs<V: 'static + Clone + PartialEq,
 fn all_algo_config_with_adaptive<V: 'static + Clone + PartialEq,
     P: 'static ,
     F: 'static + Eq + Clone + Hash>(feature_mapper: Rc<dyn FeatureMapper<V,F,P>>,
-            full_feature_mapper: Rc<dyn FeatureMapper<V,F,P>>) -> Vec<Rc<AlgoConfig<V,P,F,DiscreteHyperparameters>>> {
+            full_feature_mapper: Rc<dyn FeatureMapper<V,F,P>>) -> Vec<Rc<AlgoConfig<V,P,DiscreteHyperparameters>>> {
     let mut v = all_algos_configs(feature_mapper, full_feature_mapper);
     v.push(Rc::new(AlgoConfig {
         elitism: Rc::new(GreedySelection{}),
@@ -442,12 +442,11 @@ fn all_algo_config_with_adaptive<V: 'static + Clone + PartialEq,
     return v;
 }
 
-fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,Vec<usize>,DiscreteHyperparameters>> {
+fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,DiscreteHyperparameters>> {
     Rc::new(ProblemConfig {
         random_organism_generator: Rc::new(TSPRandomSolution{}),
         problem_instance_generator: Rc::new(SimpleTSPInstanceGenerator{ number_of_cities: 50,
             number_of_dimensions: 2}),
-        feature_mapper: Rc::new(TSPFeatureMapper{ number_cities_mapped: 1 }),
         constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.5 },
         hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 }),
         mutator: Rc::new(TSPMutator{}),
@@ -455,7 +454,7 @@ fn tsp_problem_config() -> Rc<ProblemConfig<TSPValue<usize>,TSPInstance<usize>,V
     })
 }
 
-fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, RastriginFeature, ContinuousHyperparameters>> {
+fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, ContinuousHyperparameters>> {
     let mut_size = 0.5;
 
     Rc::new(ProblemConfig {
@@ -466,11 +465,6 @@ fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, Ras
             max_abs_val: 5.0,
             nb_dimensions: 10
         }),
-        feature_mapper: Rc::new(RastriginMapper {
-            resolution: 4,
-            number_of_dimensions: 3,
-            max_abs_val: 5.12
-        }),
         constant_hyperparameters: ContinuousHyperparameters { mutation_chance: 0.5, mutation_size: mut_size },
         hyperparameter_mapper: Rc::new(ContinuousSpatialMapper{ mean_mutation_size: mut_size }),
         scorer: Rc::new(RegRastriginScorer{}),
@@ -478,11 +472,10 @@ fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, Ras
     })
 }
 
-fn onemax_config() -> Rc<ProblemConfig<OneMaxValue, OneMax, Vec<u16>, DiscreteHyperparameters>> {
+fn onemax_config() -> Rc<ProblemConfig<OneMaxValue, OneMax, DiscreteHyperparameters>> {
     Rc::new(ProblemConfig {
         random_organism_generator: Rc::new(OneMaxGenerator{}),
         problem_instance_generator: Rc::new(OneMax { size: 1000 }),
-        feature_mapper: Rc::new(OneMaxMapper{ number_of_bits: 4 }),
         constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.5 },
         hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 }),
         scorer: Rc::new(OneMaxScorer{}),

@@ -17,6 +17,14 @@ pub struct MAPElite<V,F,P> {
     pub feature_mapper: Rc<dyn FeatureMapper<V,F,P>>
 }
 
+impl<V,F,P> Clone for MAPElite<V,F,P> {
+    fn clone(&self) -> Self {
+        MAPElite {
+            feature_mapper: self.feature_mapper.clone()
+        }
+    }
+}
+
 impl<V,F,P> Named for MAPElite<V,F,P> {
     fn name(&self) -> String {
         "MAP Elite".to_string()
@@ -34,18 +42,18 @@ impl<V,F,P> Parametrized for MAPElite<V,F,P> {
     }
 }
 
-impl<V: 'static + Clone ,P: 'static,F: 'static + Clone + Eq + Hash,H: 'static> ReplacementSelection<V,P,F,H> for MAPElite<V,F,P> {
+impl<V: 'static + Clone ,P: 'static,F: 'static + Clone + Eq + Hash,H: 'static> ReplacementSelection<V,P,H> for MAPElite<V,F,P> {
     fn initialize_solver(&self,
                          pop_size: usize,
                          problem: Rc<P>,
                          elitism: Rc<dyn Elitism>,
-                         problem_config: Rc<ProblemConfig<V, P, F, H>>) -> Box<dyn UpdatableSolver<V>> {
+                         problem_config: Rc<ProblemConfig<V, P, H>>) -> Box<dyn UpdatableSolver<V>> {
         let mut hm = HashMap::new();
 
         let org = problem_config.random_organism_generator.generate_organism(
             problem.as_ref());
 
-        let feat = problem_config.feature_mapper.project(&org.genotype);
+        let feat = self.feature_mapper.project(&org.genotype);
 
         hm.insert(feat, org);
 
@@ -53,7 +61,8 @@ impl<V: 'static + Clone ,P: 'static,F: 'static + Clone + Eq + Hash,H: 'static> R
             niches: hm,
             problem: problem.clone(),
             problem_config: problem_config.clone(),
-            elitism
+            elitism,
+            algo_config: self.clone()
         })
     }
 }
@@ -62,8 +71,9 @@ impl<V: 'static + Clone ,P: 'static,F: 'static + Clone + Eq + Hash,H: 'static> R
 pub struct MAPEliteExec<V,P,F,H> {
     niches: HashMap<F,Organism<V>>,
     problem: Rc<P>,
-    problem_config: Rc<ProblemConfig<V,P,F,H>>,
-    elitism: Rc<dyn Elitism>
+    problem_config: Rc<ProblemConfig<V,P,H>>,
+    elitism: Rc<dyn Elitism>,
+    algo_config: MAPElite<V,F,P>
 }
 
 
@@ -84,7 +94,7 @@ impl<V: Clone,P,F: Clone + Eq + Hash,H> UpdatableSolver<V> for MAPEliteExec<V,P,
 
         new_org.mutate(self.problem_config.mutator.as_ref(), &self.problem_config.constant_hyperparameters);
 
-        let new_feat = self.problem_config.feature_mapper.project(&new_org.genotype);
+        let new_feat = self.algo_config.feature_mapper.project(&new_org.genotype);
 
         let copied = new_org.clone();
 

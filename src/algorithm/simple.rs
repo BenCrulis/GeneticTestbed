@@ -15,10 +15,10 @@ use serde_json::{Map, Value};
 #[derive(Copy, Clone)]
 pub struct SimpleReplacement {}
 
-struct SimpleReplacementExec<V,P,F,H> {
+struct SimpleReplacementExec<V,P,H> {
     problem: Rc<P>,
     organisms: Vec<Organism<V>>,
-    problem_config: Rc<ProblemConfig<V,P,F,H>>,
+    problem_config: Rc<ProblemConfig<V,P,H>>,
     elitism: Rc<dyn Elitism>
 }
 
@@ -39,12 +39,12 @@ impl Parametrized for SimpleReplacement {
     }
 }
 
-impl<V: Clone + 'static,P: 'static,F: 'static,H: Clone + 'static> ReplacementSelection<V,P,F,H> for SimpleReplacement {
+impl<V: Clone + 'static,P: 'static,H: Clone + 'static> ReplacementSelection<V,P,H> for SimpleReplacement {
     fn initialize_solver(
             &self, pop_size: usize,
             problem: Rc<P>,
             elitism: Rc<dyn Elitism>,
-            problem_config: Rc<ProblemConfig<V,P,F,H>>) -> Box<dyn UpdatableSolver<V>> {
+            problem_config: Rc<ProblemConfig<V,P,H>>) -> Box<dyn UpdatableSolver<V>> {
         let generator = &problem_config.random_organism_generator;
 
         let mut gr = Vec::with_capacity(pop_size);
@@ -60,7 +60,7 @@ impl<V: Clone + 'static,P: 'static,F: 'static,H: Clone + 'static> ReplacementSel
     }
 }
 
-impl<V: Clone,P,F,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,F,H> {
+impl<V: Clone,P,H> UpdatableSolver<V> for SimpleReplacementExec<V,P,H> {
     fn update(&mut self) -> Vec<Organism<V>> {
         let scorer = &self.problem_config.scorer;
 
