@@ -391,37 +391,47 @@ fn grid_ga<V: 'static + Clone + PartialEq,
     P: 'static,
     F: 'static + Eq + Clone + Hash,
     H: 'static + Hyperparameter + Clone>(
-        use_features: bool,
+        feature_mapper: Option<Rc<dyn FeatureMapper<V,F,P>>>,
         use_hyperparameter_mapping: bool,
-        number_of_spatial_dimensions: usize) -> Rc<AlgoConfig<V,P,F,H>> {
+        number_of_spatial_dimensions: usize,
+        default_features: F) -> Rc<AlgoConfig<V,P,F,H>> {
     return Rc::new(AlgoConfig {
         elitism: Rc::new(GreedySelection{}),
         replacement_selection: Rc::new(grid_ga::GeneralizedMAPElite {
-            use_features,
+            feature_mapper,
             use_hyperparameter_mapping,
-            number_of_spatial_dimensions
+            number_of_spatial_dimensions,
+            default_feature: default_features
         })
     });
 }
 
 
-fn all_algos_configs<V: 'static + Clone + PartialEq,P: 'static ,F: 'static + Eq + Clone + Hash ,H: 'static + Hyperparameter + Copy + Clone>() -> Vec<Rc<AlgoConfig<V,P,F,H>>> {
+fn all_algos_configs<V: 'static + Clone + PartialEq,
+    P: 'static,
+    F: 'static + Eq + Clone + Hash ,
+    H: 'static + Hyperparameter + Copy + Clone>(feature_mapper: Rc<dyn FeatureMapper<V,F,P>>,
+            full_feature_mapper: Rc<dyn FeatureMapper<V,F,P>>) -> Vec<Rc<AlgoConfig<V,P,F,H>>> {
+    let feat = full_feature_mapper.default_features();
     vec![simple_metropolis_ga(),
-         grid_ga(false, false, 1),
-         grid_ga(true, false, 1),
-         grid_ga(false, true, 1),
-         grid_ga(true, true, 1),
+         grid_ga(None, false, 1, feat.clone()),
+         grid_ga(Some(feature_mapper.clone()), false, 1, feat.clone()),
+         grid_ga(None, true, 1, feat.clone()),
+         grid_ga(Some(feature_mapper.clone()), true, 1, feat.clone()),
         Rc::new(AlgoConfig {
             elitism: Rc::new(GreedySelection{}),
-            replacement_selection: Rc::new(map_elite::MAPElite{})
+            replacement_selection: Rc::new(map_elite::MAPElite{
+                feature_mapper: full_feature_mapper.clone()
+            })
         })
     ]
 }
 
 fn all_algo_config_with_adaptive<V: 'static + Clone + PartialEq,
     P: 'static ,
-    F: 'static + Eq + Clone + Hash>() -> Vec<Rc<AlgoConfig<V,P,F,DiscreteHyperparameters>>> {
-    let mut v = all_algos_configs();
+    F: 'static + Eq + Clone + Hash>(feature_mapper: Rc<dyn FeatureMapper<V,F,P>>,
+            full_feature_mapper: Rc<dyn FeatureMapper<V,F,P>>) -> Vec<Rc<AlgoConfig<V,P,F,DiscreteHyperparameters>>> {
+    let mut v = all_algos_configs(feature_mapper, full_feature_mapper);
     v.push(Rc::new(AlgoConfig {
         elitism: Rc::new(GreedySelection{}),
         replacement_selection: Rc::new(simple_adaptive::SimpleAdaptive{
@@ -496,20 +506,33 @@ fn main() {
     configs.push(Rc::new(MyConfig {
         problem_config: tsp_problem_config(),
         common_config: Rc::new(common_config),
-        algorithms: all_algo_config_with_adaptive::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>>()
+        algorithms: all_algo_config_with_adaptive::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>>(
+            Rc::new(TSPFeatureMapper{ number_cities_mapped: 1 }),
+            Rc::new(TSPFeatureMapper{ number_cities_mapped: 2 })
+        )
     }));
 
 
     configs.push(Rc::new(MyConfig {
         problem_config: rastrigin_problem_config(),
         common_config: Rc::new(common_config),
-        algorithms: all_algos_configs()
+        algorithms: all_algos_configs(Rc::new(RastriginMapper{
+            resolution: 10,
+            number_of_dimensions: 1,
+            max_abs_val: 5.0
+        }),
+        Rc::new(RastriginMapper{
+            resolution: 7,
+            number_of_dimensions: 4,
+            max_abs_val: 5.0
+        }))
     }));
 
     configs.push(Rc::new(MyConfig {
         problem_config: onemax_config(),
         common_config: Rc::new(common_config),
-        algorithms: all_algo_config_with_adaptive()
+        algorithms: all_algo_config_with_adaptive(Rc::new(OneMaxMapper{ number_of_bits: 5 }),
+        Rc::new(OneMaxMapper{ number_of_bits: 11 }))
     }));
 
     let mut total_number_repetitions = 0;

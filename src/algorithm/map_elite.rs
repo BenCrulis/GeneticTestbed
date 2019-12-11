@@ -11,16 +11,19 @@ use std::hash::Hash;
 use std::collections::hash_map::Entry;
 use rand::seq::SliceRandom;
 use serde_json::{Value, Map};
+use crate::features::FeatureMapper;
 
-pub struct MAPElite {}
+pub struct MAPElite<V,F,P> {
+    pub feature_mapper: Rc<dyn FeatureMapper<V,F,P>>
+}
 
-impl Named for MAPElite {
+impl<V,F,P> Named for MAPElite<V,F,P> {
     fn name(&self) -> String {
         "MAP Elite".to_string()
     }
 }
 
-impl Parametrized for MAPElite {
+impl<V,F,P> Parametrized for MAPElite<V,F,P> {
     fn parameters(&self) -> Value {
         let mut config = Map::new();
         config.insert("use spatial grid".to_string(), false.into());
@@ -31,7 +34,7 @@ impl Parametrized for MAPElite {
     }
 }
 
-impl<V: 'static + Clone ,P: 'static,F: 'static + Clone + Eq + Hash,H: 'static> ReplacementSelection<V,P,F,H> for MAPElite {
+impl<V: 'static + Clone ,P: 'static,F: 'static + Clone + Eq + Hash,H: 'static> ReplacementSelection<V,P,F,H> for MAPElite<V,F,P> {
     fn initialize_solver(&self,
                          pop_size: usize,
                          problem: Rc<P>,

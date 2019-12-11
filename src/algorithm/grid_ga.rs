@@ -13,47 +13,69 @@ use rand::{thread_rng, Rng};
 use ndarray::{Array, ArrayView, ViewRepr, ArrayViewMut, IxDynImpl, Dim, ArrayD, ArrayViewD};
 use rand::seq::SliceRandom;
 use std::iter::Zip;
+use crate::features::FeatureMapper;
 
-#[derive(Copy, Clone)]
-pub struct GeneralizedMAPElite {
-    pub use_features: bool,
+pub struct GeneralizedMAPElite<V,F,P> {
+    pub feature_mapper: Option<Rc<dyn FeatureMapper<V,F,P>>>,
     pub use_hyperparameter_mapping: bool,
-    pub number_of_spatial_dimensions: usize
+    pub number_of_spatial_dimensions: usize,
+    pub default_feature: F
 }
 
-impl Named for GeneralizedMAPElite {
+impl<V,F: Clone,P> Clone for GeneralizedMAPElite<V,F,P> {
+    fn clone(&self) -> Self {
+        GeneralizedMAPElite {
+            feature_mapper: self.feature_mapper.clone(),
+            use_hyperparameter_mapping: self.use_hyperparameter_mapping,
+            number_of_spatial_dimensions: self.number_of_spatial_dimensions,
+            default_feature: self.default_feature.clone()
+        }
+    }
+}
+
+impl<V,F: Clone + Eq + Hash,P> GeneralizedMAPElite<V,F,P> {
+    fn project(&self, genome: &V) -> F {
+        match &self.feature_mapper {
+            Some(fm) => fm.project(genome),
+            None => self.default_feature.clone()
+        }
+    }
+}
+
+impl<V,F,P> Named for GeneralizedMAPElite<V,F,P> {
     fn name(&self) -> String {
         String::from("Generalized MAP Elite algorithm")
     }
 }
 
-impl Parametrized for GeneralizedMAPElite {
+impl<V,F,P> Parametrized for GeneralizedMAPElite<V,F,P> {
     fn parameters(&self) -> serde_json::Value {
         let mut config = Map::new();
         config.insert("use spatial grid".to_string(), self.number_of_spatial_dimensions.into());
         config.insert("use spatial hyperparameters".to_string(), self.use_hyperparameter_mapping.into());
-        config.insert("use features".to_string(), self.use_features.into());
+        config.insert("use features".to_string(), self.feature_mapper.is_some().into());
 
         return Value::Object(config);
     }
 }
 
 pub struct GeneralizedMAPEliteExec<V,P,F,H> {
-    algo_config: GeneralizedMAPElite,
+    algo_config: GeneralizedMAPElite<V,F,P>,
     problem: Rc<P>,
     organisms: Grid<V,F>,
     problem_config: Rc<ProblemConfig<V,P,F,H>>,
     elitism: Rc<dyn Elitism>
 }
 
-impl<V: Clone + 'static + PartialEq,P: 'static,F: Hash + Clone + Eq + 'static,H: Hyperparameter + 'static + Clone> ReplacementSelection<V,P,F,H> for GeneralizedMAPElite {
+impl<V: Clone + 'static + PartialEq,
+    P: 'static,
+    F: Hash + Clone + Eq + 'static,
+    H: Hyperparameter + 'static + Clone> ReplacementSelection<V,P,F,H> for GeneralizedMAPElite<V,F,P> {
     fn initialize_solver(&self, pop_size: usize, problem: Rc<P>, elitism: Rc<dyn Elitism>, problem_config: Rc<ProblemConfig<V, P, F, H>>) -> Box<dyn UpdatableSolver<V>> {
 
-        let possibles_features = if self.use_features {
-            problem_config.feature_mapper.number_of_possible_features(problem.as_ref())
-        }
-        else {
-            1
+        let possibles_features = match &self.feature_mapper {
+            Some(fm) => problem_config.feature_mapper.number_of_possible_features(problem.as_ref()),
+            None => 1
         };
 
         //println!("number of possibles features: {}", possibles_features);
@@ -74,19 +96,14 @@ impl<V: Clone + 'static + PartialEq,P: 'static,F: Hash + Clone + Eq + 'static,H:
             let org = problem_config.random_organism_generator.generate_organism(problem.as_ref());
             let mut hm = HashMap::new();
 
-            let features = if self.use_features {
-                problem_config.feature_mapper.project(&org.genotype)
-            }
-            else {
-                problem_config.feature_mapper.default_features()
-            };
+            let features = self.project(&org.genotype);
 
             hm.insert(features, org);
             return hm;
         });
 
         return Box::new(GeneralizedMAPEliteExec {
-            algo_config: *self,
+            algo_config: self.clone(),
             problem: problem.clone(),
             organisms: Grid {cells : organisms},
             problem_config: problem_config.clone(),
@@ -140,12 +157,7 @@ impl<V: Clone + PartialEq,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> Upda
 
         let old = org_a.clone();
 
-        let old_feature = if self.algo_config.use_features {
-            self.problem_config.feature_mapper.project(&org_a.genotype)
-        }
-        else {
-            self.problem_config.feature_mapper.default_features()
-        };
+        let old_feature = self.algo_config.project(&org_a.genotype); // project if using mapper else default
 
         let hyper = if self.algo_config.use_hyperparameter_mapping {
             let coord: Vec<(usize,usize)> = id_a.iter().zip(shp.iter()).map(|(&x,&y)| (x,y)).collect();
@@ -157,12 +169,7 @@ impl<V: Clone + PartialEq,P,F: Clone + Hash + Eq,H: Hyperparameter + Clone> Upda
 
         org_a.mutate(self.problem_config.mutator.as_ref(), &hyper);
 
-        let feature_a = if self.algo_config.use_features {
-            self.problem_config.feature_mapper.project(&org_a.genotype)
-        }
-        else {
-            self.problem_config.feature_mapper.default_features()
-        };
+        let feature_a = self.algo_config.project(&org_a.genotype);
 
         let score_a = org_a.score_with_cache(self.problem_config.scorer.as_ref(), self.problem.as_ref());
 
