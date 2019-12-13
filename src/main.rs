@@ -380,9 +380,9 @@ impl<V: Metric,P,H> Iterator for AlgorithmState<V,P,H> {
 
 
 
-fn simple_ga<V: Clone + 'static,P: 'static,H: Copy + 'static>() -> Rc<AlgoConfig<V,P,H>> {
+fn simple_ga<V: Clone + 'static,P: 'static,H: Copy + 'static>(elitism: Rc<dyn Elitism>) -> Rc<AlgoConfig<V,P,H>> {
     return Rc::new(AlgoConfig {
-        elitism: Rc::new(GreedySelection{}),
+        elitism,
         replacement_selection: Rc::new(SimpleReplacement{})
     })
 }
@@ -391,12 +391,13 @@ fn grid_ga<V: 'static + Clone + PartialEq,
     P: 'static,
     F: 'static + Eq + Clone + Hash,
     H: 'static + Hyperparameter + Clone>(
+        elitism: Rc<dyn Elitism>,
         feature_mapper: Option<Rc<dyn FeatureMapper<V,F,P>>>,
         use_hyperparameter_mapping: bool,
         number_of_spatial_dimensions: usize,
         default_features: F) -> Rc<AlgoConfig<V,P,H>> {
     return Rc::new(AlgoConfig {
-        elitism: Rc::new(GreedySelection{}),
+        elitism,
         replacement_selection: Rc::new(grid_ga::GeneralizedMAPElite {
             feature_mapper,
             use_hyperparameter_mapping,
@@ -413,17 +414,31 @@ fn all_algos_configs<V: 'static + Clone + PartialEq,
     H: 'static + Hyperparameter + Copy + Clone>(feature_mapper: Rc<dyn FeatureMapper<V,F,P>>,
             full_feature_mapper: Rc<dyn FeatureMapper<V,F,P>>) -> Vec<Rc<AlgoConfig<V,P,H>>> {
     let feat = full_feature_mapper.default_features();
-    vec![simple_ga(),
-         grid_ga(None, false, 1, feat.clone()),
-         grid_ga(Some(feature_mapper.clone()), false, 1, feat.clone()),
-         grid_ga(None, true, 1, feat.clone()),
-         grid_ga(Some(feature_mapper.clone()), true, 1, feat.clone()),
+    let greedy = Rc::new(GreedySelection{});
+    let mh = Rc::new(MetropolisHastings{});
+    vec![simple_ga(greedy.clone()),
+         grid_ga(greedy.clone(), None, false, 1, feat.clone()),
+         grid_ga(greedy.clone(), Some(feature_mapper.clone()), false, 1, feat.clone()),
+         grid_ga(greedy.clone(), None, true, 1, feat.clone()),
+         grid_ga(greedy.clone(), Some(feature_mapper.clone()), true, 1, feat.clone()),
          Rc::new(AlgoConfig {
-            elitism: Rc::new(GreedySelection{}),
+            elitism: greedy.clone(),
             replacement_selection: Rc::new(map_elite::MAPElite{
                 feature_mapper: full_feature_mapper.clone()
             })
-        })
+        }),
+        // Metropolis Hastings variant
+         simple_ga(mh.clone()),
+         grid_ga(mh.clone(), None, false, 1, feat.clone()),
+         grid_ga(mh.clone(), Some(feature_mapper.clone()), false, 1, feat.clone()),
+         grid_ga(mh.clone(), None, true, 1, feat.clone()),
+         grid_ga(mh.clone(), Some(feature_mapper.clone()), true, 1, feat.clone()),
+         Rc::new(AlgoConfig {
+             elitism: mh.clone(),
+             replacement_selection: Rc::new(map_elite::MAPElite{
+                 feature_mapper: full_feature_mapper.clone()
+             })
+         })
     ]
 }
 
@@ -434,6 +449,13 @@ fn all_algo_config_with_adaptive<V: 'static + Clone + PartialEq,
     let mut v = all_algos_configs(feature_mapper, full_feature_mapper);
     v.push(Rc::new(AlgoConfig {
         elitism: Rc::new(GreedySelection{}),
+        replacement_selection: Rc::new(simple_adaptive::SimpleAdaptive{
+            prior_a: 1,
+            prior_b: 1
+        })
+    }));
+    v.push(Rc::new(AlgoConfig {
+        elitism: Rc::new(MetropolisHastings{}),
         replacement_selection: Rc::new(simple_adaptive::SimpleAdaptive{
             prior_a: 1,
             prior_b: 1
