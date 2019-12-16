@@ -11,6 +11,7 @@ extern crate chrono;
 extern crate itertools;
 
 use std::vec::Vec;
+use std::env;
 use std::time::{Instant, SystemTime, Duration};
 
 use serde_json::{json, Map, Value};
@@ -22,7 +23,7 @@ mod algorithm;
 mod features;
 mod scoring;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::process::Output;
 use std::collections::hash_map::RandomState;
 use std::iter::{Cycle};
@@ -506,49 +507,61 @@ fn onemax_config() -> Rc<ProblemConfig<OneMaxValue, OneMax, DiscreteHyperparamet
 }
 
 fn main() {
-    let file_prefix = "test";
+    let file_prefix = "final";
 
     let common_config = CommonParameters {
         population_size: 2500,
-        number_of_repetitions: 1,
+        number_of_repetitions: 30,
         number_of_iterations: 100000,
-        genome_stats_gap: 100
+        genome_stats_gap: 50
     };
 
     let mut configs: Vec<Rc<dyn Config>> = Vec::new();
 
+    let mut arg_set: HashSet<String> = env::args().map(|s| s.to_lowercase()).collect();
 
-    configs.push(Rc::new(MyConfig {
-        problem_config: tsp_problem_config(),
-        common_config: Rc::new(common_config),
-        algorithms: all_algo_config_with_adaptive::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>>(
-            Rc::new(TSPFeatureMapper{ number_cities_mapped: 1 }),
-            Rc::new(TSPFeatureMapper{ number_cities_mapped: 2 })
-        )
-    }));
+    arg_set.insert("tsp".to_string());
 
+    for arg in &arg_set {
+        if arg == "tsp" {
+            configs.push(Rc::new(MyConfig {
+                problem_config: tsp_problem_config(),
+                common_config: Rc::new(common_config),
+                algorithms: all_algo_config_with_adaptive::<TSPValue<usize>,TSPInstance<usize>, Vec<usize>>(
+                    Rc::new(TSPFeatureMapper{ number_cities_mapped: 1 }),
+                    Rc::new(TSPFeatureMapper{ number_cities_mapped: 2 })
+                )
+            }));
+        }
+        else if arg == "rastrigin" {
+            configs.push(Rc::new(MyConfig {
+                problem_config: rastrigin_problem_config(),
+                common_config: Rc::new(common_config),
+                algorithms: all_algos_configs(Rc::new(RastriginMapper{
+                    resolution: 10,
+                    number_of_dimensions: 1,
+                    max_abs_val: 5.0
+                }),
+                  Rc::new(RastriginMapper{
+                      resolution: 7,
+                      number_of_dimensions: 4,
+                      max_abs_val: 5.0
+                  }))
+            }));
+        }
+        else if arg == "onemax" {
+            configs.push(Rc::new(MyConfig {
+                problem_config: onemax_config(),
+                common_config: Rc::new(common_config),
+                algorithms: all_algo_config_with_adaptive(Rc::new(OneMaxMapper{ number_of_bits: 5 }),
+                                                          Rc::new(OneMaxMapper{ number_of_bits: 11 }))
+            }));
+        }
+        else {
+            println!("Unknown config :\"{}\"", arg);
+        }
+    }
 
-    configs.push(Rc::new(MyConfig {
-        problem_config: rastrigin_problem_config(),
-        common_config: Rc::new(common_config),
-        algorithms: all_algos_configs(Rc::new(RastriginMapper{
-            resolution: 10,
-            number_of_dimensions: 1,
-            max_abs_val: 5.0
-        }),
-        Rc::new(RastriginMapper{
-            resolution: 7,
-            number_of_dimensions: 4,
-            max_abs_val: 5.0
-        }))
-    }));
-
-    configs.push(Rc::new(MyConfig {
-        problem_config: onemax_config(),
-        common_config: Rc::new(common_config),
-        algorithms: all_algo_config_with_adaptive(Rc::new(OneMaxMapper{ number_of_bits: 5 }),
-        Rc::new(OneMaxMapper{ number_of_bits: 11 }))
-    }));
 
     let mut total_number_repetitions = 0;
 
@@ -569,7 +582,7 @@ fn main() {
         let problem_name = config.get_problem_name().replace("/","_");
 
         let file = std::fs::File::create(
-            Path::new(format!("{}_{}_results_{}.csv", file_prefix, problem_name, config_index).as_str()));
+            Path::new(format!("{}_{}_results.csv", file_prefix, problem_name).as_str()));
         let mut writer = file.unwrap();
 
         let written = writer.write_all("\"".as_bytes()).and(
