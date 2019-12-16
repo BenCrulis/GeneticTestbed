@@ -520,7 +520,9 @@ fn main() {
 
     let mut arg_set: HashSet<String> = env::args().map(|s| s.to_lowercase()).collect();
 
-    arg_set.insert("tsp".to_string());
+    if arg_set.is_empty() {
+        arg_set.insert("tsp".to_string());
+    }
 
     for arg in &arg_set {
         if arg == "tsp" {
@@ -562,6 +564,11 @@ fn main() {
         }
     }
 
+    println!("Configs:");
+    for (i,cfg) in configs.iter().enumerate() {
+        println!("{}: {}", i, cfg.get_problem_name());
+    }
+    println!();
 
     let mut total_number_repetitions = 0;
 
