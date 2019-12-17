@@ -9,15 +9,20 @@ use crate::features::FeatureMapper;
 
 #[derive(Clone,Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct OneMaxValue {
-    values: Vec<u16>
+    values: Vec<bool>
 }
 
 impl Metric for OneMaxValue {
     fn distance_to(&self, other: &Self) -> f64 {
-        self.values.iter()
-            .zip(other.values.iter())
-            .map(|(x,y)| if x.ne(y) {1} else {0})
-            .sum::<u16>() as f64
+        let mut acc = 0;
+        for (x,y) in self.values.iter()
+            .zip(other.values.iter()) {
+            if x != y {
+                acc += 1;
+            }
+        }
+
+        return acc as f64;
     }
 }
 
@@ -50,7 +55,13 @@ pub struct OneMaxScorer {}
 
 impl Scorer<OneMaxValue, OneMax> for OneMaxScorer {
     fn score(&self, genome: &OneMaxValue, problem: &OneMax) -> f64 {
-        (genome.values.iter().sum::<u16>() as f64) / (genome.values.len() as f64)
+        let mut acc = 0;
+        for &b in &genome.values {
+            if b {
+                acc += 1;
+            }
+        }
+        return (acc as f64) / (genome.values.len() as f64);
     }
 }
 
@@ -65,7 +76,7 @@ impl Mutator<OneMaxValue, DiscreteHyperparameters> for OneMaxMutator {
         let mut mutated = false;
         while rng.gen::<f64>() < hyperparameters.mutation_chance {
             let i = rng.gen_range(0, genome.values.len());
-            genome.values[i] = if genome.values[i] == 0 {1} else {0};
+            genome.values[i] = !genome.values[i];
             mutated = true;
         }
 
@@ -91,16 +102,16 @@ impl Parametrized for OneMaxMapper {
     }
 }
 
-impl FeatureMapper<OneMaxValue, Vec<u16>, OneMax> for OneMaxMapper {
+impl FeatureMapper<OneMaxValue, Vec<bool>, OneMax> for OneMaxMapper {
     fn number_of_possible_features(&self, problem: &OneMax) -> usize {
         2_usize.pow(self.number_of_bits as u32)
     }
 
-    fn project(&self, genome: &OneMaxValue) -> Vec<u16> {
+    fn project(&self, genome: &OneMaxValue) -> Vec<bool> {
         return genome.values[..self.number_of_bits].to_vec();
     }
 
-    fn default_features(&self) -> Vec<u16> {
+    fn default_features(&self) -> Vec<bool> {
         return Vec::new();
     }
 }
@@ -119,7 +130,7 @@ impl Parametrized for OneMaxGenerator {}
 impl OrganismGenerator<OneMaxValue, OneMax> for OneMaxGenerator {
     fn generate(&self, problem: &OneMax) -> OneMaxValue {
         OneMaxValue {
-            values: vec![0;problem.size]
+            values: vec![false;problem.size]
         }
     }
 }
