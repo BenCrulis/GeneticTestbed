@@ -316,8 +316,9 @@ impl<V: Metric,P,H> Iterator for AlgorithmState<V,P,H> {
         }
         else {
             let before = Instant::now();
-
             let organisms = self.updatable_solver.update();
+            let duration = Instant::now().duration_since(before);
+
             let number_of_organisms = organisms.len();
 
             let mut mean_genetic_distance: Option<f64> = None;
@@ -337,9 +338,6 @@ impl<V: Metric,P,H> Iterator for AlgorithmState<V,P,H> {
                     }
                 }
             }
-
-            let duration = Instant::now().duration_since(before);
-
 
             /*
             println!("Parameters: {}\nNumber of organism: {}",
