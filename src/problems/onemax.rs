@@ -75,12 +75,10 @@ impl Mutator<OneMaxValue, DiscreteHyperparameters> for OneMaxMutator {
         let mut mutated = false;
         while rng.gen::<f64>() < hyperparameters.mutation_chance {
             let i = rng.gen_range(0, genome.values.len());
-
-            let mut bit: u8 = 0;
-
-            let shift = rng.gen_range(0,7);
-
-            genome.values[i] ^= bit << shift;
+            let mut bit: u8 = 1;
+            let shift = rng.gen_range(0,8);
+            bit <<= shift;
+            genome.values[i] ^= bit;
             mutated = true;
         }
 
