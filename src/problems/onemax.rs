@@ -15,7 +15,7 @@ pub struct OneMaxValue {
 impl Metric for OneMaxValue {
     fn distance_to(&self, other: &Self) -> f64 {
         let mut acc = 0;
-        for (x,y) in self.values.iter()
+        for (&x,&y) in self.values.iter()
             .zip(other.values.iter()) {
             if x != y {
                 acc += 1;
