@@ -498,7 +498,7 @@ fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, Con
 fn onemax_config() -> Rc<ProblemConfig<OneMaxValue, OneMax, DiscreteHyperparameters>> {
     Rc::new(ProblemConfig {
         random_organism_generator: Rc::new(OneMaxGenerator{}),
-        problem_instance_generator: Rc::new(OneMax { size: 1000 }),
+        problem_instance_generator: Rc::new(OneMax { size: 100 }),
         constant_hyperparameters: DiscreteHyperparameters{ mutation_chance: 0.5 },
         hyperparameter_mapper: Rc::new(SpatialMapper{ number_of_additional_dimensions: 0 }),
         scorer: Rc::new(OneMaxScorer{}),
@@ -555,8 +555,8 @@ fn main() {
             configs.push(Rc::new(MyConfig {
                 problem_config: onemax_config(),
                 common_config: Rc::new(common_config),
-                algorithms: all_algo_config_with_adaptive(Rc::new(OneMaxMapper{ number_of_bits: 5 }),
-                                                          Rc::new(OneMaxMapper{ number_of_bits: 11 }))
+                algorithms: all_algo_config_with_adaptive(Rc::new(OneMaxMapper{ number_of_octets: 1 }),
+                                                          Rc::new(OneMaxMapper{ number_of_octets: 1 }))
             }));
         }
         else {
