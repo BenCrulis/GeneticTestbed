@@ -553,7 +553,7 @@ fn main() {
             configs.push(Rc::new(MyConfig {
                 problem_config: onemax_config(),
                 common_config: Rc::new(common_config),
-                algorithms: all_algo_config_with_adaptive(Rc::new(OneMaxMapper{ number_of_octets: 1 }),
+                algorithms: all_algos_configs(Rc::new(OneMaxMapper{ number_of_octets: 1 }),
                                                           Rc::new(OneMaxMapper{ number_of_octets: 1 }))
             }));
         }
