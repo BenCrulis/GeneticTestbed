@@ -106,7 +106,7 @@ impl Parametrized for OneMaxMapper {
 
 impl FeatureMapper<OneMaxValue, Vec<u8>, OneMax> for OneMaxMapper {
     fn number_of_possible_features(&self, problem: &OneMax) -> usize {
-        2_usize.pow(self.number_of_octets as u32)
+        2_usize.pow((self.number_of_octets * 8) as u32)
     }
 
     fn project(&self, genome: &OneMaxValue) -> Vec<u8> {
