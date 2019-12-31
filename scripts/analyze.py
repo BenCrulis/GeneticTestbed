@@ -88,6 +88,38 @@ symbols = {
 }
 
 
+def max_score_plot(aggregated, elitism):
+    
+    print(aggregated)
+    
+    aggregated = aggregated.loc[elitism]
+    
+    for k,data in aggregated.groupby("algorithm index"):
+        
+        #plt.scatter(df["intgen"], df["max score"])
+    
+        iterations = data.loc[k]["max score"]
+        
+        iterations = iterations[iterations.index % 1000 == 0]
+        
+        elitism, props, fullname = algo_index_to_properties(k,js)
+        color = colors[props]
+        symb = symbols[elitism]
+        
+        full_algo_name = fullname + " - " + elitism
+                
+        plt.errorbar(iterations.index,
+                    iterations["mean"],
+                    yerr=iterations["std"],
+                    errorevery=1, c=color,label=full_algo_name,
+                    marker=symb,
+                    alpha=0.7)
+    plt.xlabel("number of fitness calls (iterations)")
+    plt.ylabel("max population score")
+    plt.title(problem_name)
+    plt.legend()
+    plt.show()
+
 for path in paths:
     print("reading",path)
     
@@ -112,6 +144,10 @@ for path in paths:
         optimize_table(chunk)
         #chunk = chunk[chunk["iteration"] % 50 == 0]
         chunk = chunk[chunk["mean genetic distance"].notnull() == True]
+        
+        chunk["elitism"] = chunk["algorithm index"].apply(
+            lambda x: algo_index_to_properties(x,js)[0])
+        
         #print(chunk)
         #print(test["intgen"])
         
@@ -125,38 +161,19 @@ for path in paths:
     del l
     
     print("setting indexes...")
-    df.set_index(["algorithm index"], inplace=True)
+    df.set_index(["elitism","algorithm index"], inplace=True)
     
     
-    aggregated = df.groupby(["algorithm index","iteration"]).agg(["mean", "std"])
+    aggregated = df.groupby(["elitism",
+                        "algorithm index",
+                        "iteration"]).agg(["mean", "std"])
     
+    max_score_plot(aggregated,"Metropolis-Hastings")
+    
+    max_score_plot(aggregated,"Greedy_selection")
 
     
-    for k,data in aggregated.groupby("algorithm index"):
-        
-        #plt.scatter(df["intgen"], df["max score"])
     
-        iterations = data.loc[k]["max score"]
-        
-        iterations = iterations[iterations.index % 1000 == 0]
-        
-        elitism, props, fullname = algo_index_to_properties(k,js)
-        color = colors[props]
-        symb = symbols[elitism]
-        
-        full_algo_name = fullname + " - " + elitism
-                
-        plt.errorbar(iterations.index,
-                    iterations["mean"],
-                    yerr=iterations["std"],
-                    errorevery=3, c=color,label=full_algo_name,
-                    marker=symb,
-                    alpha=0.7)
-    plt.xlabel("number of fitness calls (iterations)")
-    plt.ylabel("max population score")
-    plt.title(problem_name)
-    plt.legend()
-    plt.show()
 
 
 
