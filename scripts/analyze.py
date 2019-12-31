@@ -19,6 +19,11 @@ def get_problem_name(filename):
     else:
         return "unknown"
 
+def run_groups(df):
+    for i in df:
+        print(i)
+        break
+
 def optimize_table(df):
     df.drop("sum score", 1, inplace=True)
     df.drop("duration (ns)", 1, inplace=True)
@@ -39,47 +44,139 @@ cols = ['repetition', 'algorithm index', 'iteration', 'duration (ns)',
        'mean genetic distance']
 
 
+def algo_index_to_properties(index, js):
+    algo = js["algorithms"][index]
+    
+    prop = algo["algorithm config"]
+    config = (algo["algorithm name"],
+            prop.get("use features", False),
+            prop.get("use spatial hyperparameters", False))
+    
+    fullname = config[0]
+    
+    if "generalized map elite" in fullname.lower():
+        fullname = "GMAP Elite: "
+        if config[:1] == [False,False]:
+            fullname += "only grid"
+        elif config[:1] == [False,True]:
+            fullname += "map hyperparameters"
+        elif config[:1] == [True,False]:
+            fullname += "map features"
+        elif config[:1] == [False,True]:
+            fullname += "map both"
+    
+    return (algo["elitism"],
+            config,
+            fullname)
+
 paths = sys.argv[1:]
 
 # name, features, hyperparameters
 colors = {
     ("SimpleReplacement",False,False): "grey",
-    ("Generalized MAP Elite algorithm",False,False): "green",
-    ("Generalized MAP Elite algorithm",False,True): "green",
+    ("Generalized MAP Elite algorithm",False,False): "pink",
+    ("Generalized MAP Elite algorithm",False,True): "turquoise",
     ("Generalized MAP Elite algorithm",True,False): "green",
-    ("Generalized MAP Elite algorithm",True,True): "green",
-    ("MAP Elite",False,False): "green",
-    ("Simple Adaptive GA",False,False): "green",
+    ("Generalized MAP Elite algorithm",True,True): "indigo",
+    ("MAP Elite",True,False): "gold",
+    ("Simple Adaptive GA",False,False): "darkred",
 }
 
-symb = {
-    "Greedy_selection": "+",
-    "Metropolis-Hastings": "o"
+symbols = {
+    "Greedy_selection": ".",
+    "Metropolis-Hastings": "v"
 }
 
 
 for path in paths:
     print("reading",path)
     
+    problem_name = get_problem_name(path)
+    print("Analysing results for",problem_name)
+    
+    print("reading config...")
     js = None
     with open(path) as f:
         js = f.readline()
         js = json.loads(js[1:-2])
         pprint(js)
     
-    df = pd.DataFrame()
+    print("reading chunks...")
+    df = None
     l = []
-    reader = pd.read_table(path, sep=",", chunksize=100*1024, skiprows=1)
+    reader = pd.read_table(path, sep=",", chunksize=500*1024, skiprows=1)
+    
+    i = 0
     for chunk in reader:
         chunk["intgen"] = chunk["generations"].apply(np.int32)
         optimize_table(chunk)
-        #test = chunk[chunk["iteration"] % 50 == 0]
+        #chunk = chunk[chunk["iteration"] % 50 == 0]
+        chunk = chunk[chunk["mean genetic distance"].notnull() == True]
+        #print(chunk)
         #print(test["intgen"])
         
         l.append(chunk)
+        i += 1
+        if i > 100:
+            break
+    print("read {} chunks".format(i))
     
     df = pd.concat(l)
     del l
-    plt.scatter(df["intgen"], df["max score"])
+    
+    print("setting indexes...")
+    df.set_index(["algorithm index"], inplace=True)
+    
+    
+    aggregated = df.groupby(["algorithm index","iteration"]).agg(["mean", "std"])
+    
+
+    
+    for k,data in aggregated.groupby("algorithm index"):
         
+        #plt.scatter(df["intgen"], df["max score"])
+    
+        iterations = data.loc[k]["max score"]
+        
+        iterations = iterations[iterations.index % 1000 == 0]
+        
+        elitism, props, fullname = algo_index_to_properties(k,js)
+        color = colors[props]
+        symb = symbols[elitism]
+        
+        full_algo_name = fullname + " - " + elitism
+                
+        plt.errorbar(iterations.index,
+                    iterations["mean"],
+                    yerr=iterations["std"],
+                    errorevery=3, c=color,label=full_algo_name,
+                    marker=symb,
+                    alpha=0.7)
+    plt.xlabel("number of fitness calls (iterations)")
+    plt.ylabel("max population score")
+    plt.title(problem_name)
+    plt.legend()
     plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
