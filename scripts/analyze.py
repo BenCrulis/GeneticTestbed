@@ -56,16 +56,24 @@ def algo_index_to_properties(index, js):
     
     if "generalized map elite" in fullname.lower():
         fullname = "GMAP Elite: "
-        if config[:1] == [False,False]:
+        if config[1:] == (False,False):
             fullname += "only grid"
-        elif config[:1] == [False,True]:
+        elif config[1:] == (False,True):
             fullname += "map hyperparameters"
-        elif config[:1] == [True,False]:
+        elif config[1:] == (True,False):
             fullname += "map features"
-        elif config[:1] == [False,True]:
+        elif config[1:] == (True,True):
             fullname += "map both"
     
-    return (algo["elitism"],
+    
+    algo_elitism = algo["elitism"]
+    
+    if algo_elitism == "Metropolis-Hastings":
+        fullname += " - MH"
+    elif algo_elitism == "Greedy_selection":
+        fullname += " - greedy"
+    
+    return (algo_elitism,
             config,
             fullname)
 
@@ -87,10 +95,16 @@ symbols = {
     "Metropolis-Hastings": "v"
 }
 
+axis_names = {
+    "max score": "max population score",
+    "variance": "score diversity (variance)",
+    "mean genetic distance": "genetic diversity  of population"
+}
 
-def max_score_plot(aggregated, elitism):
+
+def iteration_plot(aggregated, elitism, y_axe="max score"):
     
-    print(aggregated)
+    plt.figure(figsize=(11,7))
     
     aggregated = aggregated.loc[elitism]
     
@@ -98,27 +112,37 @@ def max_score_plot(aggregated, elitism):
         
         #plt.scatter(df["intgen"], df["max score"])
     
-        iterations = data.loc[k]["max score"]
+        iterations = data.loc[k][y_axe]
         
         iterations = iterations[iterations.index % 1000 == 0]
         
         elitism, props, fullname = algo_index_to_properties(k,js)
         color = colors[props]
         symb = symbols[elitism]
-        
-        full_algo_name = fullname + " - " + elitism
-                
+                        
         plt.errorbar(iterations.index,
                     iterations["mean"],
                     yerr=iterations["std"],
-                    errorevery=1, c=color,label=full_algo_name,
+                    errorevery=1, c=color,label=fullname,
                     marker=symb,
                     alpha=0.7)
     plt.xlabel("number of fitness calls (iterations)")
-    plt.ylabel("max population score")
+    
+    y_axis_name = axis_names[y_axe]
+    
+    plt.ylabel(y_axis_name)
+    
     plt.title(problem_name)
     plt.legend()
     plt.show()
+
+results_dir = "analysis_results"
+
+if not os.path.isdir(results_dir):
+    print("creating result folder \"{}\"...".format(results_dir))
+    os.mkdir(results_dir)
+else:
+    print("results folder \"{}\" already created, skipping...")
 
 for path in paths:
     print("reading",path)
@@ -168,12 +192,17 @@ for path in paths:
                         "algorithm index",
                         "iteration"]).agg(["mean", "std"])
     
-    max_score_plot(aggregated,"Metropolis-Hastings")
+    iteration_plot(aggregated,"Metropolis-Hastings", "max score")
     
-    max_score_plot(aggregated,"Greedy_selection")
+    iteration_plot(aggregated,"Greedy_selection", "max score")
 
+    iteration_plot(aggregated,"Metropolis-Hastings", "variance")
     
+    iteration_plot(aggregated,"Greedy_selection", "variance")
     
+    iteration_plot(aggregated,"Metropolis-Hastings", "mean genetic distance")
+    
+    iteration_plot(aggregated,"Greedy_selection", "mean genetic distance")
 
 
 
