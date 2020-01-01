@@ -482,7 +482,7 @@ fn rastrigin_problem_config() -> Rc<ProblemConfig<RastriginValue, Rastrigin, Con
         random_organism_generator: Rc::new(RastriginGenerator{}),
         problem_instance_generator: Rc::new(Rastrigin{
             a: 10.0,
-            b: 1000.0,
+            b: 20.0,
             max_abs_val: 5.0,
             nb_dimensions: 10
         }),
