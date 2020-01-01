@@ -157,6 +157,8 @@ def iteration_plot(aggregated, elitism, y_axe="max score"):
     plt.close(plt.gcf())
     #plt.show()
 
+iteration_plots = False
+
 for path in paths:
     print("reading",path)
     
@@ -205,17 +207,60 @@ for path in paths:
                         "algorithm index",
                         "iteration"]).agg(["mean", "std"])
     
-    iteration_plot(aggregated,"Metropolis-Hastings", "max score")
-    iteration_plot(aggregated,"Greedy_selection", "max score")
+    if iteration_plots:
+        iteration_plot(aggregated,"Metropolis-Hastings", "max score")
+        iteration_plot(aggregated,"Greedy_selection", "max score")
 
-    iteration_plot(aggregated,"Metropolis-Hastings", "variance")
-    iteration_plot(aggregated,"Greedy_selection", "variance")
+        iteration_plot(aggregated,"Metropolis-Hastings", "variance")
+        iteration_plot(aggregated,"Greedy_selection", "variance")
+        
+        iteration_plot(aggregated,"Metropolis-Hastings", "mean genetic distance")
+        iteration_plot(aggregated,"Greedy_selection", "mean genetic distance")
+
+
+    correlations = []
+    for k,d in aggregated.groupby(["elitism","algorithm index"]):
+        
+        elitism, index = k
+        
+        _, props, _ = algo_index_to_properties(index,js)
+        
+        previous = d["mean score"].shift(periods=1)
+        
+        gain = d["mean score"] - previous
+        
+        gain[1:]
+        
+        corr_score_variance = gain.corrwith(d["variance"][1:])["mean"]
+        
+        corr_genetic_distance = gain.corrwith(d["mean genetic distance"][1:])["mean"]
+        
+        corr_variance_genetic_distance = d["variance"][1:].corrwith(
+            d["mean genetic distance"][1:])["mean"]
+        
+        print(k, corr_score_variance, corr_genetic_distance)
+        
+        line = [elitism]
+        line.extend(props)
+        line.append(corr_score_variance)
+        line.append(corr_genetic_distance)
+        line.append(corr_variance_genetic_distance)
+        
+        correlations.append(line)
     
-    iteration_plot(aggregated,"Metropolis-Hastings", "mean genetic distance")
-    iteration_plot(aggregated,"Greedy_selection", "mean genetic distance")
-
-
-
+    correlations = pd.DataFrame.from_records(correlations, columns=["elitism",
+        "algorithm",
+        "use features",
+        "use hyperparameters",
+        "gain - score",
+        "gain - diversity",
+        "score - diversity"])
+    
+    corr_filename = "{}/{}_correlations.csv".format(results_dir, problem_name)
+    print("writing correlation CSV...")
+    correlations.to_csv(corr_filename,index=False)
+    
+    pprint(correlations)
 
 
 
