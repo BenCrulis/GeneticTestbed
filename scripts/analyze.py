@@ -101,6 +101,14 @@ axis_names = {
     "mean genetic distance": "genetic diversity  of population"
 }
 
+results_dir = "analysis_results"
+
+if not os.path.isdir(results_dir):
+    print("creating result folder \"{}\"...".format(results_dir))
+    os.mkdir(results_dir)
+else:
+    print("results folder \"{}\" already created, skipping...")
+
 
 def iteration_plot(aggregated, elitism, y_axe="max score"):
     
@@ -134,15 +142,20 @@ def iteration_plot(aggregated, elitism, y_axe="max score"):
     
     plt.title(problem_name)
     plt.legend()
-    plt.show()
-
-results_dir = "analysis_results"
-
-if not os.path.isdir(results_dir):
-    print("creating result folder \"{}\"...".format(results_dir))
-    os.mkdir(results_dir)
-else:
-    print("results folder \"{}\" already created, skipping...")
+    
+    filename = results_dir + "/"
+    filename += "{}_iterations_{}_{}.png".format(problem_name,
+                                                elitism, y_axe)
+    
+    plt.subplots_adjust(left=0.09, bottom=0.08, right=.98, top=.95, wspace=None, hspace=None)
+    #plt.subplots_adjust(wspace=0.01, hspace=0.01)
+    
+    #plt.savefig(filename, bbox_inches="tight", pad_inches=0.1)
+    #plt.savefig(filename, pad_inches=0)
+    plt.savefig(filename, pad_inches=0)
+    print("save \"{}\"".format(filename))
+    plt.close(plt.gcf())
+    #plt.show()
 
 for path in paths:
     print("reading",path)
@@ -193,15 +206,12 @@ for path in paths:
                         "iteration"]).agg(["mean", "std"])
     
     iteration_plot(aggregated,"Metropolis-Hastings", "max score")
-    
     iteration_plot(aggregated,"Greedy_selection", "max score")
 
     iteration_plot(aggregated,"Metropolis-Hastings", "variance")
-    
     iteration_plot(aggregated,"Greedy_selection", "variance")
     
     iteration_plot(aggregated,"Metropolis-Hastings", "mean genetic distance")
-    
     iteration_plot(aggregated,"Greedy_selection", "mean genetic distance")
 
 
