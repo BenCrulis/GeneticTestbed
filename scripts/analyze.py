@@ -43,6 +43,21 @@ cols = ['repetition', 'algorithm index', 'iteration', 'duration (ns)',
        'number of organisms', 'variance', 'generations',
        'mean genetic distance']
 
+def get_algorithm_full_name(name, use_feat, use_hyper):
+
+    fullname = name
+    comb = (use_feat, use_hyper)
+    if "generalized map elite" in fullname.lower():
+        fullname = "GMAP Elite: "
+        if comb == (False,False):
+            fullname += "only grid"
+        elif comb == (False,True):
+            fullname += "map hyperparameters"
+        elif comb == (True,False):
+            fullname += "map features"
+        elif comb == (True,True):
+            fullname += "map both"
+    return fullname
 
 def algo_index_to_properties(index, js):
     algo = js["algorithms"][index]
@@ -52,19 +67,7 @@ def algo_index_to_properties(index, js):
             prop.get("use features", False),
             prop.get("use spatial hyperparameters", False))
     
-    fullname = config[0]
-    
-    if "generalized map elite" in fullname.lower():
-        fullname = "GMAP Elite: "
-        if config[1:] == (False,False):
-            fullname += "only grid"
-        elif config[1:] == (False,True):
-            fullname += "map hyperparameters"
-        elif config[1:] == (True,False):
-            fullname += "map features"
-        elif config[1:] == (True,True):
-            fullname += "map both"
-    
+    fullname = get_algorithm_full_name(config[0], config[1], config[2])
     
     algo_elitism = algo["elitism"]
     
@@ -201,8 +204,74 @@ def generation_plot(aggregated, elitism, y_axe="max score"):
     #plt.savefig(filename, bbox_inches="tight", pad_inches=0.1)
     #plt.savefig(filename, pad_inches=0)
     plt.savefig(filename, pad_inches=0)
-    print("save \"{}\"".format(filename))
+    print("saved \"{}\"".format(filename))
     plt.close(plt.gcf())
+    #plt.show()
+
+def compute_correlations(aggregated):
+    correlations = []
+    for k,d in aggregated.groupby(["elitism","algorithm index"]):
+        
+        elitism, index = k
+        
+        _, props, _ = algo_index_to_properties(index,js)
+        
+        previous = d["mean score"].shift(periods=1)
+        
+        gain = d["mean score"] - previous
+        
+        gain[1:]
+        
+        corr_score_variance = gain.corrwith(d["variance"][1:])["mean"]
+        
+        corr_genetic_distance = gain.corrwith(d["mean genetic distance"][1:])["mean"]
+        
+        corr_variance_genetic_distance = d["variance"][1:].corrwith(
+            d["mean genetic distance"][1:])["mean"]
+                
+        line = [elitism]
+        line.extend(props)
+        line.append(corr_score_variance)
+        line.append(corr_genetic_distance)
+        line.append(corr_variance_genetic_distance)
+        
+        correlations.append(line)
+    return correlations
+
+def correlations_bar_plots(grouped, column="gain - score", prefix=""):
+    index = grouped.loc["Metropolis-Hastings"].index
+    bar_width = 0.35
+    opacity = 0.8
+
+    plt.figure(figsize=(11,7))
+
+    rects1 = plt.bar(index, grouped.loc["Greedy_selection"][column], bar_width,
+    alpha=opacity,
+    color='b',
+    label='Greedy_selection')
+
+    rects2 = plt.bar(index + bar_width, grouped.loc["Metropolis-Hastings"][column], bar_width,
+    alpha=opacity,
+    color='g',
+    label='Metropolis-Hastings')
+
+    plt.ylim(bottom=-1.0, top=1.0)
+
+    plt.xlabel('Algorithm')
+    plt.ylabel('correlation')
+    plt.title(column + ' correlations by algorithm')
+    plt.xticks(rotation=30, ha="right")
+    plt.xticks(index + bar_width/2.0, grouped.loc["Metropolis-Hastings"]["algorithm name"])
+    plt.legend()
+    plt.subplots_adjust(left=0.09, bottom=0.3, right=.98, top=.95, wspace=None, hspace=None)
+    
+    filename = "{}/{}_{}_{}_correlations.png".format(results_dir,
+        problem_name, prefix, column)
+    
+    plt.savefig(filename, pad_inches=0)
+    print("saved \"{}\"".format(filename))
+    plt.close(plt.gcf())
+    
     #plt.show()
 
 iteration_plots = True
@@ -290,7 +359,7 @@ for path in paths:
             corr_variance_genetic_distance = d["variance"][1:].corrwith(
                 d["mean genetic distance"][1:])["mean"]
             
-            print(k, corr_score_variance, corr_genetic_distance)
+            #print(k, corr_score_variance, corr_genetic_distance)
             
             line = [elitism]
             line.extend(props)
@@ -312,14 +381,35 @@ for path in paths:
         print("writing correlation CSV...")
         correlations.to_csv(corr_filename,index=False)
         
-        pprint(correlations)
+        #pprint(correlations)
         
     
     by_gen = df.groupby(["elitism","algorithm index","intgen","repetition"]).max()
     by_gen = by_gen.groupby(["elitism","algorithm index","intgen"]).agg(["mean", "std"])
 
-
-    print(by_gen)
+    correlations_gen = compute_correlations(by_gen)
+    correlations_gen = pd.DataFrame.from_records(correlations_gen, columns=["elitism",
+            "algorithm",
+            "use features",
+            "use hyperparameters",
+            "gain - score",
+            "gain - diversity",
+            "score - diversity"])
+    
+    corr_filename = "{}/{}_correlations_genenerations.csv".format(results_dir, problem_name)
+    print("writing correlation by generations CSV...")
+    correlations_gen.to_csv(corr_filename,index=False)
+    
+    correlations_gen["algorithm name"] = correlations_gen[
+        ["algorithm","use features","use hyperparameters"]].apply(
+            lambda l: get_algorithm_full_name(*l), axis=1)
+    
+    #print(correlations_gen)
+    grouped = correlations_gen.groupby("elitism").apply(lambda x: x.reset_index())
+    
+    correlations_bar_plots(grouped, "gain - score")
+    correlations_bar_plots(grouped, "gain - diversity")
+    correlations_bar_plots(grouped, "score - diversity")
 
     generation_plot(by_gen,"Metropolis-Hastings", "max score")
     generation_plot(by_gen,"Greedy_selection", "max score")
