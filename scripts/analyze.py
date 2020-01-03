@@ -274,8 +274,63 @@ def correlations_bar_plots(grouped, column="gain - score", prefix=""):
     
     #plt.show()
 
+
+def difference_between_elitism_plots(aggregated, js, y_axe):
+    plt.figure(figsize=(11,7))
+    
+    #aggregated.groupby()
+    
+    for new_index,data in aggregated.groupby("new index"):
+                
+        #plt.scatter(df["intgen"], df["max score"])
+        
+        name = None
+        
+        for (el,index),d in data.groupby(["elitism","new index"]):
+            
+            
+            elitism, props, fullname = algo_index_to_properties(index,js)
+
+            name = props[0]
+            
+            print("plotting {}".format(fullname))
+            
+            #iterations = d.loc[elitism][y_axe]
+        
+            color = colors[props]
+            symb = symbols[elitism]
+                            
+            plt.errorbar(d.reset_index(level="intgen")["intgen"],
+                        d[y_axe]["mean"],
+                        yerr=d[y_axe]["std"],
+                        errorevery=1, c=color,label=fullname,
+                        marker=symb,
+                        alpha=0.7)
+        
+        plt.xlabel("generations (iterations/population size)")
+        
+        y_axis_name = axis_names[y_axe]
+        
+        plt.ylabel(y_axis_name)
+        
+        plt.title(problem_name)
+        plt.legend()
+        
+        filename = results_dir + "/"
+        filename += "{}_elitisms_{}_{}.png".format(problem_name,name,y_axe)
+        
+        plt.subplots_adjust(left=0.09, bottom=0.08, right=.98, top=.95, wspace=None, hspace=None)
+        #plt.subplots_adjust(wspace=0.01, hspace=0.01)
+        
+        #plt.savefig(filename, bbox_inches="tight", pad_inches=0.1)
+        #plt.savefig(filename, pad_inches=0)
+        plt.savefig(filename, pad_inches=0)
+        print("saved \"{}\"".format(filename))
+        plt.close(plt.gcf())
+        #plt.show()
+
 iteration_plots = True
-iteration_correlations = False
+iteration_correlations = True
 
 for path in paths:
     print("reading",path)
@@ -338,6 +393,7 @@ for path in paths:
         iteration_plot(aggregated,"Metropolis-Hastings", "number of organisms")
         iteration_plot(aggregated,"Greedy_selection", "number of organisms")
 
+
     if iteration_correlations:
         correlations = []
         for k,d in aggregated.groupby(["elitism","algorithm index"]):
@@ -382,9 +438,31 @@ for path in paths:
         correlations.to_csv(corr_filename,index=False)
         
         #pprint(correlations)
+    
+    
+    new_algo_indexes = df.groupby("elitism", as_index=False).apply(
+        lambda x: x.groupby("algorithm index").mean().reset_index())
+    
         
+    #new_algo_indexes.set_index("algorithm index")
+        
+    new_algo_indexes.index = new_algo_indexes.index.droplevel(0)
+            
+    new_algo_indexes["new index"] = new_algo_indexes.index
+        
+    new_algo_indexes.set_index("algorithm index", inplace=True)
+    
+    new_algo_indexes = new_algo_indexes["new index"]
+    
+    df["new index"] = df.index
+    
+    df["new index"] = df["new index"].apply(
+        lambda x: new_algo_indexes.loc[x[1]])
+    
+    print(df["new index"])
     
     by_gen = df.groupby(["elitism","algorithm index","intgen","repetition"]).max()
+    by_algo = by_gen.groupby(["algorithm index","new index", "elitism", "intgen"]).agg(["mean", "std"])
     by_gen = by_gen.groupby(["elitism","algorithm index","intgen"]).agg(["mean", "std"])
 
     correlations_gen = compute_correlations(by_gen)
@@ -392,9 +470,9 @@ for path in paths:
             "algorithm",
             "use features",
             "use hyperparameters",
-            "gain - score",
-            "gain - diversity",
-            "score - diversity"])
+            "gain - score diversity",
+            "gain - genetic diversity",
+            "score diversity - genetic diversity"])
     
     corr_filename = "{}/{}_correlations_genenerations.csv".format(results_dir, problem_name)
     print("writing correlation by generations CSV...")
@@ -407,15 +485,27 @@ for path in paths:
     #print(correlations_gen)
     grouped = correlations_gen.groupby("elitism").apply(lambda x: x.reset_index())
     
-    correlations_bar_plots(grouped, "gain - score")
-    correlations_bar_plots(grouped, "gain - diversity")
-    correlations_bar_plots(grouped, "score - diversity")
-
-    generation_plot(by_gen,"Metropolis-Hastings", "max score")
-    generation_plot(by_gen,"Greedy_selection", "max score")
+    correlations_bar_plots(grouped, "gain - score diversity")
+    correlations_bar_plots(grouped, "gain - genetic diversity")
+    correlations_bar_plots(grouped, "score diversity - genetic diversity")
 
 
+    if iteration_plots:
+        
+        # generation plots
+        generation_plot(by_gen,"Metropolis-Hastings", "max score")
+        generation_plot(by_gen,"Greedy_selection", "max score")
 
+        generation_plot(by_gen,"Metropolis-Hastings", "variance")
+        generation_plot(by_gen,"Greedy_selection", "variance")
+        
+        generation_plot(by_gen,"Metropolis-Hastings", "mean genetic distance")
+        generation_plot(by_gen,"Greedy_selection", "mean genetic distance")
+        
+        generation_plot(by_gen,"Metropolis-Hastings", "number of organisms")
+        generation_plot(by_gen,"Greedy_selection", "number of organisms")
+
+    difference_between_elitism_plots(by_algo, js, "max score")
 
 
 
