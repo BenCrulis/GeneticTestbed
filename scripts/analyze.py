@@ -98,6 +98,11 @@ symbols = {
     "Metropolis-Hastings": "v"
 }
 
+linestyles = {
+    "Greedy_selection": "-",
+    "Metropolis-Hastings": ":"
+}
+
 axis_names = {
     "max score": "max population score",
     "variance": "score diversity (variance)",
@@ -172,9 +177,7 @@ def generation_plot(aggregated, elitism, y_axe="max score"):
         #plt.scatter(df["intgen"], df["max score"])
     
         iterations = data.loc[k][y_axe]
-        
-        print(iterations)
-        
+                
         elitism, props, fullname = algo_index_to_properties(k,js)
         color = colors[props]
         symb = symbols[elitism]
@@ -276,22 +279,22 @@ def correlations_bar_plots(grouped, column="gain - score", prefix=""):
 
 
 def difference_between_elitism_plots(aggregated, js, y_axe):
-    plt.figure(figsize=(11,7))
     
     #aggregated.groupby()
     
     for new_index,data in aggregated.groupby("new index"):
                 
         #plt.scatter(df["intgen"], df["max score"])
-        
+        plt.figure(figsize=(11,7))
+
         name = None
         
-        for (el,index),d in data.groupby(["elitism","new index"]):
+        for (el,index),d in data.groupby(["elitism","algorithm index"]):
             
             
             elitism, props, fullname = algo_index_to_properties(index,js)
 
-            name = props[0]
+            name = fullname
             
             print("plotting {}".format(fullname))
             
@@ -299,12 +302,20 @@ def difference_between_elitism_plots(aggregated, js, y_axe):
         
             color = colors[props]
             symb = symbols[elitism]
+            ls = linestyles[elitism]
+            
+            number_of_rows = len(d)
+            
+            every = int(number_of_rows / 25)
+            
+            d = d[d.reset_index().index % every == 0]
                             
             plt.errorbar(d.reset_index(level="intgen")["intgen"],
                         d[y_axe]["mean"],
                         yerr=d[y_axe]["std"],
                         errorevery=1, c=color,label=fullname,
                         marker=symb,
+                        ls=ls,
                         alpha=0.7)
         
         plt.xlabel("generations (iterations/population size)")
@@ -458,9 +469,7 @@ for path in paths:
     
     df["new index"] = df["new index"].apply(
         lambda x: new_algo_indexes.loc[x[1]])
-    
-    print(df["new index"])
-    
+        
     by_gen = df.groupby(["elitism","algorithm index","intgen","repetition"]).max()
     by_algo = by_gen.groupby(["algorithm index","new index", "elitism", "intgen"]).agg(["mean", "std"])
     by_gen = by_gen.groupby(["elitism","algorithm index","intgen"]).agg(["mean", "std"])
