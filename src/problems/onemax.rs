@@ -60,7 +60,7 @@ impl Scorer<OneMaxValue, OneMax> for OneMaxScorer {
         for &b in &genome.values {
             acc += b.count_ones();
         }
-        return (acc as f64) / (genome.values.len() as f64);
+        return (acc as f64) / ((genome.values.len()*8) as f64);
     }
 }
 
